@@ -1,0 +1,41 @@
+# The governance story, made literal: an approved proposal is a merge, and a merge only
+# reaches production if this passes. Every check here is one a reviewer would otherwise
+# have to take on trust.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24        # matches "engines" in package.json
+          cache: npm
+      - run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: White-label proof (no bundle vocabulary in the engine)
+        run: npm run greptest
+
+      - name: Engine contract, write plane and WebMCP adapters
+        run: npx tsx scripts/smoke.mts
+
+      # Both bundles must compile from the same engine — that IS the white-label claim.
+      - name: Build demo bundle
+        run: npm run build:meridian
+      - name: Build docs bundle
+        run: npm run build:docs
+
+      # Leave the demo bundle in place so the app builds against it.
+      - name: Rebuild demo bundle
+        run: npm run build:meridian
+      - name: Build web app
+        run: npm run build --workspace apps/web

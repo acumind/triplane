@@ -1,0 +1,14 @@
+{
+  "name": "@triplane/engine",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./server": "./src/server.ts"
+  },
+  "dependencies": {
+    "gray-matter": "^4.0.3",
+    "minisearch": "^7.2.0"
+  }
+}

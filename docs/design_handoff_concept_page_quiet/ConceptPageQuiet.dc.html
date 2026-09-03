@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<!-- @template name="Concept page (quiet)" description="Enterprise concept page in a quiet document-editor theme: white ground, grey sidebar, near-black type, green status only" -->
+<helmet><link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"><style>body{margin:0;background:#fff;color:#1a1a1a;font-family:"Instrument Sans",system-ui,sans-serif;font-size:14px;line-height:1.55;-webkit-font-smoothing:antialiased}*{box-sizing:border-box}a{color:#1a1a1a;text-decoration:underline;text-decoration-color:#c9c9c9;text-underline-offset:3px}a:hover{text-decoration-color:#1a1a1a}button:hover{background:#f0f0f0!important}[data-tip]{position:relative}[data-tip]:hover::after{content:attr(data-tip);position:absolute;top:calc(100% + 6px);left:50%;transform:translateX(-50%);white-space:nowrap;background:#1a1a1a;color:#fff;font-size:11px;padding:4px 8px;border-radius:6px;pointer-events:none;z-index:9}</style></helmet>
+<div style="display:grid;grid-template-columns:232px 1fr 380px;height:100vh;min-height:860px;overflow:hidden">
+<aside style="background:#f7f7f7;border-right:1px solid #ececec;display:flex;flex-direction:column;font-size:13px">
+<div style="display:flex;align-items:center;gap:8px;padding:14px 12px 8px"><span style="font-weight:600;font-size:13px;padding:0 4px">Meridian Knowledge</span><span style="margin-left:auto;width:28px;height:28px;display:grid;place-items:center;border-radius:6px;color:#666" data-tip="Search ⌘K">⌕</span></div>
+<div style="padding:4px 12px 14px"><button style="width:100%;display:flex;align-items:center;gap:8px;font:inherit;font-size:13px;color:#1a1a1a;background:transparent;border:0;padding:6px 8px;border-radius:6px;cursor:pointer;text-align:left"><span style="color:#666;font-size:16px;line-height:1">+</span>New concept</button></div>
+<div style="padding:0 16px 6px;font-size:11px;color:#8a8a8a;display:flex;justify-content:space-between"><span>Domain</span></div>
+<div style="margin:0 12px 14px;padding:6px 8px;border-radius:6px;display:flex;align-items:center;gap:8px;color:#1a1a1a"><span style="flex:1">Meridian Analytics</span><span style="color:#8a8a8a;font-size:10px">▾</span></div>
+<div style="flex:1;overflow:auto;padding:0 12px 12px">
+<div style="padding:6px 4px 4px;font-size:11px;color:#8a8a8a;display:flex;justify-content:space-between"><span>Join path</span><span>2</span></div>
+<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:6px"><span style="flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Join: events → users</span><i style="width:6px;height:6px;border-radius:50%;background:#2fb344"></i></div>
+<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:6px"><span style="flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Join: orders → users</span><i style="width:6px;height:6px;border-radius:50%;background:#2fb344"></i></div>
+<div style="padding:12px 4px 4px;font-size:11px;color:#8a8a8a;display:flex;justify-content:space-between"><span>Metric</span><span>2</span></div>
+<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:6px"><span style="flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Churn rate (weekly, per cohort)</span><i style="width:6px;height:6px;border-radius:50%;background:#2fb344"></i></div>
+<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:6px"><span style="flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Weekly Active Users (WAU)</span><i style="width:6px;height:6px;border-radius:50%;border:1px solid #b5b5b5"></i></div>
+<div style="padding:12px 4px 4px;font-size:11px;color:#8a8a8a;display:flex;justify-content:space-between"><span>Policy</span><span>1</span></div>
+<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:6px"><span style="flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">PII handling in analytics</span><i style="width:6px;height:6px;border-radius:50%;background:#2fb344"></i></div>
+<div style="padding:12px 4px 4px;font-size:11px;color:#8a8a8a;display:flex;justify-content:space-between"><span>Runbook</span><span>1</span></div>
+<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:6px"><span style="flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">WAU pipeline</span><i style="width:6px;height:6px;border-radius:50%;border:1px solid #b5b5b5"></i></div>
+<div style="padding:12px 4px 4px;font-size:11px;color:#8a8a8a;display:flex;justify-content:space-between"><span>Table</span><span>3</span></div>
+<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:6px"><span style="flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">events (raw event stream)</span><i style="width:6px;height:6px;border-radius:50%;background:#2fb344"></i></div>
+<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:6px"><span style="flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">orders</span><i style="width:6px;height:6px;border-radius:50%;background:#2fb344"></i></div>
+<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:6px;background:#e9e9e9;font-weight:500"><span style="flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">users (customer master)</span><i style="width:6px;height:6px;border-radius:50%;background:#2fb344"></i></div>
+<div style="padding:12px 4px 4px;font-size:11px;color:#8a8a8a;display:flex;justify-content:space-between"><span>Term</span><span>2</span></div>
+<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:6px"><span style="flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Active user (definition)</span><i style="width:6px;height:6px;border-radius:50%;background:#2fb344"></i></div>
+<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:6px"><span style="flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Cohort (definition)</span><i style="width:6px;height:6px;border-radius:50%;background:#2fb344"></i></div>
+</div>
+<div style="display:flex;align-items:center;gap:8px;padding:12px 16px;font-size:12px;color:#555;border-top:1px solid #ececec"><i style="width:6px;height:6px;border-radius:50%;background:#2fb344"></i><span>Agents connected</span><span style="margin-left:auto;color:#8a8a8a">Audit · Admin</span></div>
+</aside>
+<main style="overflow:auto;position:relative">
+<div style="position:sticky;top:0;z-index:2;background:#fff;display:flex;align-items:center;gap:6px;height:52px;padding:0 24px;font-size:12px;color:#8a8a8a"><span>Meridian Analytics</span><span>/</span><span>Tables</span><span>/</span><span style="color:#1a1a1a">users</span>
+<div style="margin-left:auto;display:flex;align-items:center;gap:4px"><span style="display:inline-flex;align-items:center;gap:6px;color:#555;font-size:12px;margin-right:8px"><i style="width:6px;height:6px;border-radius:50%;background:#2fb344"></i>Published · v14 · verified 12 Aug</span><button data-tip="Subscribe" style="width:30px;height:30px;display:grid;place-items:center;border:0;background:transparent;border-radius:6px;cursor:pointer;color:#555;font-size:14px">◔</button><button data-tip="Share" style="width:30px;height:30px;display:grid;place-items:center;border:0;background:transparent;border-radius:6px;cursor:pointer;color:#555;font-size:14px">↗</button><button data-tip="Export" style="width:30px;height:30px;display:grid;place-items:center;border:0;background:transparent;border-radius:6px;cursor:pointer;color:#555;font-size:14px">↓</button><button data-tip="History (14)" style="width:30px;height:30px;display:grid;place-items:center;border:0;background:transparent;border-radius:6px;cursor:pointer;color:#555;font-size:14px">⟲</button><button data-tip="More" style="width:30px;height:30px;display:grid;place-items:center;border:0;background:transparent;border-radius:6px;cursor:pointer;color:#555;font-size:14px">···</button><button style="margin-left:8px;font:inherit;font-size:13px;font-weight:500;padding:6px 12px;border-radius:6px;border:1px solid #e2e2e2;background:#fff;cursor:pointer;color:#1a1a1a">Propose change</button></div></div>
+<div style="max-width:760px;margin:0 auto;padding:36px 32px 80px">
+<div style="display:flex;gap:6px;margin-bottom:14px"><span style="font-size:11px;padding:3px 8px;border-radius:6px;background:#f3f3f3;color:#555">Table</span><span style="font-size:11px;padding:3px 8px;border-radius:6px;background:#f3f3f3;color:#555">Contains PII</span><span style="font-size:11px;padding:3px 8px;border-radius:6px;background:#f3f3f3;color:#555">Confidential</span></div>
+<h1 style="margin:0 0 10px;font-size:40px;font-weight:700;line-height:1.1;letter-spacing:-.025em">users (customer master)</h1>
+<p style="margin:0 0 20px;font-size:17px;color:#444">One row per registered customer.</p>
+<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;padding:14px 0;border-top:1px solid #ececec;border-bottom:1px solid #ececec;margin-bottom:32px;font-size:13px"><div><div style="font-size:11px;color:#8a8a8a;margin-bottom:2px">Owner</div>Customer Data Platform</div><div><div style="font-size:11px;color:#8a8a8a;margin-bottom:2px">Steward</div>A. Kaur</div><div><div style="font-size:11px;color:#8a8a8a;margin-bottom:2px">Next review</div>in 68 days</div><div><div style="font-size:11px;color:#8a8a8a;margin-bottom:2px">Concept ID</div><span style="font-family:ui-monospace,monospace;font-size:12px">tbl.users.v14</span></div></div>
+<h2 style="margin:0 0 12px;font-size:22px;font-weight:600;letter-spacing:-.015em">Lineage</h2>
+<div style="display:grid;grid-template-columns:1fr 20px 1fr 20px 1fr;align-items:center;gap:8px;font-size:12.5px;margin-bottom:12px">
+<div style="display:flex;flex-direction:column;gap:6px"><div style="border:1px solid #e2e2e2;border-radius:6px;padding:8px 10px"><div style="font-size:10.5px;color:#8a8a8a">Source</div>crm.customers (nightly)</div><div style="border:1px solid #e2e2e2;border-radius:6px;padding:8px 10px"><div style="font-size:10.5px;color:#8a8a8a">Source</div>auth.signups (stream)</div></div>
+<div style="height:1px;background:#d6d6d6"></div>
+<div style="display:flex;flex-direction:column;gap:6px"><div style="border-radius:6px;padding:8px 10px;background:#1a1a1a;color:#fff"><div style="font-size:10.5px;color:#aaa">This table</div><b style="font-weight:600">users</b></div><div style="border:1px dashed #cfcfcf;border-radius:6px;padding:8px 10px"><div style="font-size:10.5px;color:#8a8a8a">Governed by</div>PII handling in analytics</div></div>
+<div style="height:1px;background:#d6d6d6"></div>
+<div style="display:flex;flex-direction:column;gap:6px"><div style="border:1px solid #e2e2e2;border-radius:6px;padding:8px 10px"><div style="font-size:10.5px;color:#8a8a8a">Metric</div>Churn rate (weekly, per cohort)</div><div style="border:1px solid #e2e2e2;border-radius:6px;padding:8px 10px"><div style="font-size:10.5px;color:#8a8a8a">Join</div>events → users</div><div style="border:1px solid #e2e2e2;border-radius:6px;padding:8px 10px"><div style="font-size:10.5px;color:#8a8a8a">Join</div>orders → users</div></div></div>
+<p style="margin:0 0 36px;font-size:12px;color:#8a8a8a">2 upstream · 1 policy · 3 downstream · <a>Open full graph</a></p>
+<h2 style="margin:0 0 12px;font-size:22px;font-weight:600;letter-spacing:-.015em">Schema</h2>
+<table style="width:100%;border-collapse:collapse;font-size:14px;margin-bottom:16px"><thead><tr><th style="text-align:left;font-size:12px;font-weight:500;color:#8a8a8a;padding:8px 8px 8px 0;border-bottom:1px solid #ececec">Column</th><th style="text-align:left;font-size:12px;font-weight:500;color:#8a8a8a;padding:8px;border-bottom:1px solid #ececec">Type</th><th style="text-align:left;font-size:12px;font-weight:500;color:#8a8a8a;padding:8px;border-bottom:1px solid #ececec">Classification</th><th style="text-align:left;font-size:12px;font-weight:500;color:#8a8a8a;padding:8px;border-bottom:1px solid #ececec">Notes</th></tr></thead><tbody>
+<sc-for list="{{ columns }}" as="c" hint-placeholder-count="5">
+<tr><td style="padding:9px 8px 9px 0;border-bottom:1px solid #f0f0f0;font-family:ui-monospace,monospace;font-size:13px">{{ c.name }}</td><td style="padding:9px 8px;border-bottom:1px solid #f0f0f0;color:#666">{{ c.type }}</td><td style="padding:9px 8px;border-bottom:1px solid #f0f0f0"><sc-if value="{{ c.pii }}" hint-placeholder-val="{{ false }}"><span style="font-size:11px;padding:2px 8px;border-radius:6px;background:#1a1a1a;color:#fff">PII</span></sc-if><sc-if value="{{ c.internal }}" hint-placeholder-val="{{ true }}"><span style="font-size:11px;padding:2px 8px;border-radius:6px;background:#f3f3f3;color:#555">Internal</span></sc-if></td><td style="padding:9px 8px;border-bottom:1px solid #f0f0f0">{{ c.notes }}</td></tr>
+</sc-for>
+</tbody></table>
+<div style="border-left:2px solid #d6d6d6;padding:6px 16px;margin:0 0 36px;color:#444;font-size:15px">Rows with <code style="font-family:ui-monospace,monospace;font-size:12.5px;background:#f3f3f3;padding:2px 6px;border-radius:4px">status = 'deleted'</code> are excluded from every metric by policy.</div>
+<h2 style="margin:0 0 12px;font-size:22px;font-weight:600;letter-spacing:-.015em">Referenced by</h2>
+<sc-for list="{{ refs }}" as="r" hint-placeholder-count="6"><div style="display:flex;gap:12px;padding:7px 0;border-bottom:1px solid #f0f0f0;font-size:13.5px"><span style="font-family:ui-monospace,monospace;font-size:11.5px;color:#8a8a8a;width:64px;flex:none;padding-top:2px">{{ r.rel }}</span><a style="text-decoration:none">{{ r.label }}</a></div></sc-for>
+<h2 style="margin:36px 0 12px;font-size:22px;font-weight:600;letter-spacing:-.015em">Machine view</h2>
+<pre style="margin:0 0 12px;background:#f7f7f7;border-radius:6px;padding:16px 18px;font-family:ui-monospace,monospace;font-size:12.5px;line-height:1.7;color:#333;overflow:auto">GET  /v1/concepts/tbl.users
+mcp://meridian/tables/users
+src  tables/users.md</pre>
+<div style="display:flex;gap:6px;font-size:12px;color:#555"><span style="padding:3px 10px;border:1px solid #e2e2e2;border-radius:6px">JSON</span><span style="padding:3px 10px;border:1px solid #e2e2e2;border-radius:6px">YAML</span><span style="padding:3px 10px;border:1px solid #e2e2e2;border-radius:6px">OpenAPI</span><span style="margin-left:auto;color:#8a8a8a">1,284 human reads · 9,730 agent queries · 30 days</span></div>
+<h2 style="margin:36px 0 12px;font-size:22px;font-weight:600;letter-spacing:-.015em">Recent changes</h2>
+<div style="display:flex;gap:12px;padding:7px 0;font-size:13.5px"><span style="font-family:ui-monospace,monospace;font-size:11.5px;color:#8a8a8a;width:64px;flex:none;padding-top:2px">v14</span><span>Added <code style="font-family:ui-monospace,monospace;font-size:12px;background:#f3f3f3;padding:1px 5px;border-radius:4px">home_region</code> <span style="color:#8a8a8a">· A. Kaur · 12 Aug</span></span></div>
+<div style="display:flex;gap:12px;padding:7px 0;font-size:13.5px"><span style="font-family:ui-monospace,monospace;font-size:11.5px;color:#8a8a8a;width:64px;flex:none;padding-top:2px">v13</span><span>PII classification on <code style="font-family:ui-monospace,monospace;font-size:12px;background:#f3f3f3;padding:1px 5px;border-radius:4px">email</code> <span style="color:#8a8a8a">· Governance · 3 Jul</span></span></div>
+<a style="font-size:13px;display:inline-block;margin-top:6px">View all 14 versions</a>
+</div></main>
+<aside style="border-left:1px solid #ececec;display:flex;flex-direction:column;overflow:hidden;background:#fff">
+<div style="display:flex;align-items:center;gap:8px;height:52px;padding:0 18px"><span style="font-weight:600;font-size:13px">Ask</span><span style="font-size:11px;color:#8a8a8a">snapshot 03 Sep 08:10</span><span style="margin-left:auto;display:flex;gap:2px"><span data-tip="Threads" style="width:28px;height:28px;display:grid;place-items:center;border-radius:6px;color:#555">☰</span><span data-tip="How answers work" style="width:28px;height:28px;display:grid;place-items:center;border-radius:6px;color:#555">ⓘ</span><span data-tip="Close" style="width:28px;height:28px;display:grid;place-items:center;border-radius:6px;color:#555">×</span></span></div>
+<div style="flex:1;overflow:auto;padding:14px 18px;display:flex;flex-direction:column;gap:18px;font-size:13.5px">
+<div style="align-self:flex-end;max-width:88%;padding:8px 12px;background:#f3f3f3;border-radius:6px">How is churn rate (weekly, per cohort) computed, end to end?</div>
+<div style="display:flex;flex-direction:column;gap:10px">
+<div style="display:flex;gap:6px;align-items:center;font-size:11.5px;color:#8a8a8a"><i style="width:6px;height:6px;border-radius:50%;background:#2fb344"></i>4 published concepts · high coverage</div>
+<p style="margin:0;line-height:1.65;color:#1a1a1a">Churn is computed weekly over <a>cohorts</a><sup style="font-family:ui-monospace,monospace;font-size:10px;color:#555;margin-left:2px">trm.cohort</sup> of <a>active users</a><sup style="font-family:ui-monospace,monospace;font-size:10px;color:#555;margin-left:2px">trm.active</sup>. The WAU pipeline joins <code style="font-family:ui-monospace,monospace;font-size:12px;background:#f3f3f3;padding:1px 5px;border-radius:4px">events → users</code><sup style="font-family:ui-monospace,monospace;font-size:10px;color:#555;margin-left:2px">join.events_users</sup>, excludes rows where <code style="font-family:ui-monospace,monospace;font-size:12px;background:#f3f3f3;padding:1px 5px;border-radius:4px">status = 'deleted'</code><sup style="font-family:ui-monospace,monospace;font-size:10px;color:#555;margin-left:2px">tbl.users</sup>, and divides users lost this week by the cohort's prior-week count<sup style="font-family:ui-monospace,monospace;font-size:10px;color:#555;margin-left:2px">met.churn</sup>.</p>
+<div style="border-left:2px solid #d6d6d6;padding:4px 12px;font-size:12.5px;color:#555">Not covered: the retention window for re-activated users isn't defined in any published concept. <a>Ask the owner</a></div>
+<div style="display:flex;gap:2px;margin-left:-6px"><span data-tip="Copy" style="width:28px;height:28px;display:grid;place-items:center;border-radius:6px;color:#666">⧉</span><span data-tip="Share thread" style="width:28px;height:28px;display:grid;place-items:center;border-radius:6px;color:#666">↗</span><span data-tip="Flag as incorrect" style="width:28px;height:28px;display:grid;place-items:center;border-radius:6px;color:#666">⚑</span><span data-tip="Show trace" style="width:28px;height:28px;display:grid;place-items:center;border-radius:6px;color:#666">⌁</span></div>
+</div></div>
+<div style="padding:12px 18px 14px"><div style="border:1px solid #e2e2e2;border-radius:6px;padding:10px 12px;display:flex;align-items:flex-end;gap:8px"><span style="flex:1;color:#8a8a8a;font-size:13.5px">Ask anything…</span><button style="width:28px;height:28px;border-radius:6px;border:0;background:#1a1a1a;color:#fff;cursor:pointer;font-size:13px">↑</button></div><div style="margin-top:8px;font-size:11px;color:#8a8a8a">Cites published concepts only · Scope: Meridian Analytics · Logged to audit</div></div>
+</aside>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      columns: [
+        { name: 'id', type: 'string', internal: true, pii: false, notes: 'primary key' },
+        { name: 'email', type: 'string', internal: false, pii: true, notes: 'masked for analysts — see pii-handling' },
+        { name: 'created_at', type: 'timestamp', internal: true, pii: false, notes: 'registration time' },
+        { name: 'home_region', type: 'string', internal: true, pii: false, notes: 'ISO region code' },
+        { name: 'status', type: 'string', internal: true, pii: false, notes: 'active / dormant / deleted' }
+      ],
+      refs: [
+        { rel: 'joins', label: 'Join: events → users' }, { rel: 'joins', label: 'Join: orders → users' },
+        { rel: 'source', label: 'Churn rate (weekly, per cohort)' }, { rel: 'governs', label: 'Policy: PII handling in analytics' },
+        { rel: 'mentions', label: 'events (raw event stream)' }, { rel: 'mentions', label: 'orders' }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

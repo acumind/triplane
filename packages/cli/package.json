@@ -1,0 +1,6 @@
+{
+  "name": "@triplane/cli",
+  "version": "0.1.0",
+  "type": "module",
+  "dependencies": { "@triplane/engine": "*" }
+}

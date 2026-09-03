@@ -1,0 +1,24 @@
+{
+  "name": "triplane",
+  "private": true,
+  "engines": {
+    "node": ">=24"
+  },
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "build:meridian": "tsx packages/cli/src/build.ts bundles/meridian",
+    "build:docs": "TRIPLANE_BUNDLE=triplane-docs tsx packages/cli/src/build.ts bundles/triplane-docs",
+    "typecheck": "tsc -p packages/engine && tsc -p packages/cli",
+    "greptest": "bash scripts/greptest.sh",
+    "web": "TRIPLANE_DOMAIN=http://localhost:3000 npm run build:meridian && npm run dev --workspace apps/web",
+    "instance:docs": "bash scripts/second-instance.sh"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.1",
+    "tsx": "^4.23.13",
+    "typescript": "^5.9.3"
+  }
+}

@@ -1,0 +1,16 @@
+node_modules/
+.next/
+apps/web/public/graph.json
+apps/web/public/llms.txt
+apps/web/public/.well-known/
+apps/web/public/bundle/
+.env*
+!.env.example
+
+# fs-store review queue — transient local state, never committed
+.proposals/
+*.tsbuildinfo
+
+# second local instance (git worktree) — never committed
+.instances/
+.DS_Store
