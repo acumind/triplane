@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { bus } from "../lib/bus";
+import type { Graph } from "@triplane/engine";
 import { loadGraph } from "./WebMCPProvider";
 
 const ForceGraph = dynamic(() => import("./ForceGraphClient"), { ssr: false });
@@ -70,13 +71,17 @@ function collide(radius: number) {
 export function GraphView({
   height = 320,
   focus,
-  bordered = false
+  bordered = false,
+  graph
 }: {
   height?: number;
   /** Show only this concept and its immediate neighbours — the whole graph is
    *  unreadable in a side panel, and the local structure is what the page is about. */
   focus?: string;
   bordered?: boolean;
+  /** Plot this graph instead of the deployment's own — used by the sandbox to show a
+   *  bundle that exists only in the browser. */
+  graph?: Graph;
 }) {
   const [data, setData] = useState<{ nodes: any[]; links: any[] }>({ nodes: [], links: [] });
   const [lit, setLit] = useState<Set<string>>(new Set());
@@ -97,7 +102,8 @@ export function GraphView({
 
   useEffect(() => {
     setState("loading");
-    loadGraph().then((g) => {
+    // A supplied graph never came from disk, so there is nothing to fetch.
+    (graph ? Promise.resolve(graph) : loadGraph()).then((g) => {
       let nodes = g.nodes;
       let edges = g.edges;
       if (focus) {
@@ -122,7 +128,7 @@ export function GraphView({
     const onHi = (e: Event) => setLit(new Set((e as CustomEvent<string[]>).detail));
     bus?.addEventListener("highlight", onHi);
     return () => bus?.removeEventListener("highlight", onHi);
-  }, [focus, reloads]);
+  }, [focus, reloads, graph]);
 
   // Track the container: without an explicit width the canvas keeps the library's
   // default and stops matching the page — including when the sidebar opens or closes.

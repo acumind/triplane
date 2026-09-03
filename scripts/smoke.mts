@@ -1,7 +1,7 @@
-import { mkdtempSync, mkdirSync, writeFileSync, existsSync, rmSync } from "node:fs";
+import { mkdtempSync, mkdirSync, writeFileSync, existsSync, readFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { compileBundle, buildTools, createMcpHandler, buildAiCatalog, fsStore, validateProposal, shortestPath, upstream } from "@triplane/engine/server";
+import { compileBundle, compileFiles, buildTools, createMcpHandler, buildAiCatalog, fsStore, validateProposal, shortestPath, upstream } from "@triplane/engine/server";
 import { listPageTools, executePageTool, registerWebmcpTools, PageToolUnavailable } from "@triplane/engine";
 import { pageTypeFor, sampleQuestion } from "../apps/web/lib/page";
 import { conceptView, isRestricted, statusLine } from "../apps/web/lib/concept";
@@ -222,6 +222,34 @@ console.log("\n— native WebMCP (registerTool handles, no enumerator):");
   } finally {
     delete (globalThis as any).document;
   }
+}
+
+// One compiler, two front doors. A sandbox that previewed a bundle through a second,
+// subtly different code path would show the user something the build would not produce.
+console.log("\n— compileFiles (no filesystem):");
+{
+  const fromDisk = compileBundle("bundles/meridian");
+  const files = fromDisk.graph.nodes.map((n) => ({
+    path: n.path,
+    content: readFileSync(join("bundles/meridian", n.path), "utf8")
+  }));
+  const inMemory = compileFiles(files);
+  check("same bundle hash as reading the directory", inMemory.graph.bundleHash === fromDisk.graph.bundleHash);
+  check("same concepts and edges", inMemory.graph.nodes.length === fromDisk.graph.nodes.length && inMemory.graph.edges.length === fromDisk.graph.edges.length);
+  check("compiles nothing without complaint", compileFiles([]).graph.nodes.length === 0);
+
+  const bad = compileFiles([
+    { path: "a.md", content: "---\ntitle: No type\n---\n\nlinks to [[nowhere]]\n" },
+    { path: "b.md", content: "---\nid: a\ntype: term\n---\n\nbody\n" },
+    { path: "c.md", content: "---\nid: a\ntype: term\n---\n\nduplicate id\n" },
+    { path: "lonely.md", content: "---\nid: lonely\ntype: term\n---\n\nnothing links here and it links nowhere\n" }
+  ]);
+  const msgs = bad.issues.map((i) => i.message).join(" | ");
+  check("missing type is an error", msgs.includes("missing required frontmatter field: type"));
+  check("a broken link is an error", msgs.includes("broken link"));
+  check("a duplicate id is an error", msgs.includes("duplicate id"));
+  check("an orphan warns rather than fails", bad.issues.some((i) => i.level === "warn" && i.message.includes("orphan node: lonely")));
+  check("a duplicate id no longer crashes the compiler", bad.graph.nodes.length === 4);
 }
 
 // The concept view model. It reads free-form OKF frontmatter, so the contract that matters

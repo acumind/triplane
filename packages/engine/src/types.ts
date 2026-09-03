@@ -6,6 +6,9 @@ export interface TriplaneConfig {
   brand: { name: string; tagline?: string; accent: string };
   /** Emitted into /.well-known/ai-catalog.json — identifies who publishes this knowledge. */
   publisher: { name: string; domain: string; contact?: string };
+  /** Show the product pitch at "/" and move the concept index to "/concepts". Off for a
+   *  tenant deployment: a customer's knowledge base should not advertise its vendor. */
+  landing?: boolean;
   planes: {
     webmcp: { enabled: boolean; originTrialToken?: string };
     ard: { enabled: boolean; mcp: boolean };

@@ -6,22 +6,34 @@ import type { TriplaneConfig } from "./packages/engine/src/types";
  * TRIPLANE_DOMAIN sets the deployed origin the catalog advertises; it accepts a bare host
  * ("docs.example.com") or a full origin ("http://localhost:3000") for local ARD runs.
  */
-const isDocs = process.env.TRIPLANE_BUNDLE === "triplane-docs";
-const bundle = isDocs ? "bundles/triplane-docs" : "bundles/meridian";
+type BundleId = "meridian" | "triplane-docs" | "controls";
+const selected = (process.env.TRIPLANE_BUNDLE ?? "meridian") as BundleId;
+const isDocs = selected === "triplane-docs";
+const isControls = selected === "controls";
+const bundle = `bundles/${selected === "meridian" ? "meridian" : selected}`;
 
 const config: TriplaneConfig = {
   bundle,
   brand: {
-    name: isDocs ? "Triplane Docs" : "Meridian Knowledge",
+    name: isDocs ? "Triplane" : isControls ? "Northwind Controls" : "Meridian Knowledge",
     tagline: "Publish once. Humans read it, agents drive it, the ecosystem discovers it.",
-    accent: "#FFD400" // the ONLY color in the UI — reserved for agent activity
+    accent: "#FFD400" // legacy: the current design reserves colour for status (guardrail 6)
   },
+  // The pitch belongs to Triplane's own deployment. A tenant's knowledge base advertising
+  // its vendor would undo the white-label claim the tenant is there to demonstrate.
+  landing: isDocs,
   // Identity travels with the bundle: each deployment publishes as itself, never as the other.
   publisher: isDocs
     ? {
         name: "Triplane",
         domain: process.env.TRIPLANE_DOMAIN ?? "triplane.example.com",
         contact: "hello@triplane.example.com"
+      }
+    : isControls
+    ? {
+        name: "Northwind Financial (demo)",
+        domain: process.env.TRIPLANE_DOMAIN ?? "controls.example.com",
+        contact: "assurance@northwind.example.com"
       }
     : {
         name: "Meridian Retail (demo)",
