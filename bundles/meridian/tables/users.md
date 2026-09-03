@@ -55,3 +55,5 @@ changes:
 One row per registered customer.
 
 > Rows with `status = 'deleted'` are excluded from every metric by policy. See [[pii-handling]].
+
+<!-- store test: an edit to an existing file -->
