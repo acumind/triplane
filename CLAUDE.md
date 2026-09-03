@@ -83,7 +83,9 @@ Restart `npm run web` after editing `.env.local`; it is read at startup, not on 
 3. **`highlight_subgraph` is never cut.** It's the demo. Cut order if squeezed: MCP transport → `compare_metrics` → history view.
 4. **`kind: "write"` and `kind: "ui"` tools never mount on `/api/mcp`.** The asymmetry is the security story.
 5. **Writes only ever create proposals.** Nothing publishes without human approval. "Approval is the deploy."
-6. **Design follows `docs/design_handoff_concept_page_quiet/` — that handoff is the spec, not this line.** Quiet enterprise theme: white ground, `#f7f7f7` sidebar, near-black type, Instrument Sans throughout. Green `#2fb344` is the ONLY chromatic colour and is reserved for **status dots**. No shadows, no gradients, no all-caps. Tokens in `app/globals.css`; match the handoff's values rather than inventing new ones.
+6. **Design follows `docs/design_handoff_concept_page_quiet/` — that handoff is the spec, not this line.** Quiet enterprise theme: white ground, `#f7f7f7` sidebar, near-black type, Instrument Sans throughout. Green `#2fb344` is the ONLY chromatic colour. It is reserved for **status dots**, with one
+   deliberate exception: **the agent's `highlight_subgraph` path on the index graph is green too.**
+   That is demo beat 2's whole payoff and needs to read across a room — decided 2026-09-03, keep it. No shadows, no gradients, no all-caps. Tokens in `app/globals.css`; match the handoff's values rather than inventing new ones.
    *This replaced an earlier "ink-on-paper, serif body, accent-for-agent-activity" rule.* `brand.accent` is consequently no longer used in the UI — deployments now differ by brand name and bundle, not colour. Don't "restore" the old rule; if the accent should return, decide that deliberately.
 7. Model id everywhere: `claude-sonnet-4-6`.
 
