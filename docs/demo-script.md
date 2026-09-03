@@ -92,7 +92,11 @@ rm -f bundles/meridian/metrics/retention-rate.md && rm -rf bundles/meridian/.pro
 npm run build:meridian
 ```
 
-### 7 · Any bundle, same engine (20s) — flip to `:3002`
+### 7 · Any bundle, same engine (20s) — the deployment switcher
+Open the **Deployment** dropdown at the top of the left rail. It probes each deployment
+live and shows its own name and **bundle hash** — three deployments, three different
+hashes, one engine, before you click anything. Pick **Northwind Controls**.
+
 Northwind Controls: financial controls, evidence, attestation owners, review dates.
 Identical interface, different domain, different publisher in the catalog — **the engine
 contains no bundle vocabulary at all**, and `npm run greptest` fails the build if any leaks
@@ -125,6 +129,7 @@ DevTools panel, invoke `get_join_path` by hand, and show `compare_metrics` prese
 | Sidebar says "ANTHROPIC_API_KEY not set" | The key is missing from `apps/web/.env.local`. It is read at startup — restart after adding it. |
 | A page renders "The compiled bundle is missing" | No `public/graph.json`. Run `npm run build:meridian`. |
 | `:3001` or `:3002` looks like an older build | A worktree is pinned to the commit it was made from. Re-run its `second-instance.sh` command; it checks out HEAD. |
+| A deployment shows "unreachable" in the switcher | That instance is down, **or** it is serving a build older than the CORS fix. Re-run its `second-instance.sh` command. |
 | The agent answers but the graph stays dark | You are on a concept page. The graph lives on `/` and `/concepts`. |
 | Governance approve fails | The local store shells out to the build. Check the terminal running `:3000` for the lint error. |
 

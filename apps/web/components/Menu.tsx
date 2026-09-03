@@ -80,7 +80,7 @@ export function Menu({
                 download={it.download}
                 onClick={() => setOpen(false)}
               >
-                {it.label}
+                <span className="menu-label">{it.label}</span>
                 {it.note && <span className="menu-note">{it.note}</span>}
               </a>
             ) : (
@@ -94,7 +94,7 @@ export function Menu({
                   setOpen(false);
                 }}
               >
-                {it.label}
+                <span className="menu-label">{it.label}</span>
                 {it.note && <span className="menu-note">{it.note}</span>}
               </button>
             )
