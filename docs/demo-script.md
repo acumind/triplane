@@ -3,9 +3,27 @@
 Every step below was walked end to end on 2026-09-03 against the running app. Where a step
 is unverified it says so.
 
-## Before you start
+## Hosted, or local
 
-Three instances, one engine — start them in three terminals:
+All four are live and are the safer choice — no localhost, no cold compile, no laptop:
+
+| | |
+|---|---|
+| Meridian Knowledge | https://triplane-meridian.vercel.app |
+| Triplane (the pitch) | https://triplane-docs.vercel.app |
+| Northwind Controls | https://triplane-controls.vercel.app |
+| Dhruva Home Appliances | https://triplane-dhruva.vercel.app |
+
+The switcher in the sidebar moves between them, so the white-label beat is a click rather
+than a second terminal. Everything below works against either; substitute the URL. The one
+thing hosted does *better* is beat 5 — `/govern` there is backed by real pull requests on
+`acumind/triplane`, so approval genuinely is the deploy.
+
+Run locally if the venue's wifi is a risk, or to demo a rebuild in two seconds.
+
+## Before you start (local)
+
+Four instances, one engine — start them in four terminals:
 
 ```bash
 npm run web                                              # :3000  Meridian Knowledge (tenant)
