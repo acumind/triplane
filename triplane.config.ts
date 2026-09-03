@@ -6,16 +6,17 @@ import type { TriplaneConfig } from "./packages/engine/src/types";
  * TRIPLANE_DOMAIN sets the deployed origin the catalog advertises; it accepts a bare host
  * ("docs.example.com") or a full origin ("http://localhost:3000") for local ARD runs.
  */
-type BundleId = "meridian" | "triplane-docs" | "controls";
+type BundleId = "meridian" | "triplane-docs" | "controls" | "dhruva";
 const selected = (process.env.TRIPLANE_BUNDLE ?? "meridian") as BundleId;
 const isDocs = selected === "triplane-docs";
 const isControls = selected === "controls";
+const isDhruva = selected === "dhruva";
 const bundle = `bundles/${selected === "meridian" ? "meridian" : selected}`;
 
 const config: TriplaneConfig = {
   bundle,
   brand: {
-    name: isDocs ? "Triplane" : isControls ? "Northwind Controls" : "Meridian Knowledge",
+    name: isDocs ? "Triplane" : isControls ? "Northwind Controls" : isDhruva ? "Dhruva Home Appliances" : "Meridian Knowledge",
     tagline: "Publish once. Humans read it, agents drive it, the ecosystem discovers it.",
     accent: "#FFD400" // legacy: the current design reserves colour for status (guardrail 6)
   },
@@ -35,7 +36,8 @@ const config: TriplaneConfig = {
     : [
         { name: "Meridian Knowledge", url: "http://localhost:3000" },
         { name: "Triplane", url: "http://localhost:3001" },
-        { name: "Northwind Controls", url: "http://localhost:3002" }
+        { name: "Northwind Controls", url: "http://localhost:3002" },
+        { name: "Dhruva Home Appliances", url: "http://localhost:3003" }
       ],
   // The pitch belongs to Triplane's own deployment. A tenant's knowledge base advertising
   // its vendor would undo the white-label claim the tenant is there to demonstrate.
@@ -46,6 +48,12 @@ const config: TriplaneConfig = {
         name: "Triplane",
         domain: process.env.TRIPLANE_DOMAIN ?? "triplane.example.com",
         contact: "hello@triplane.example.com"
+      }
+    : isDhruva
+    ? {
+        name: "Dhruva Appliances (demo)",
+        domain: process.env.TRIPLANE_DOMAIN ?? "dhruva.example.com",
+        contact: "care@dhruva.example.com"
       }
     : isControls
     ? {

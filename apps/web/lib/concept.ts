@@ -80,7 +80,9 @@ export function conceptView(graph: Graph, n: ConceptNode): ConceptView {
       name: String(c?.name ?? ""),
       type: str(c?.type),
       classification: str(c?.classification),
-      notes: str(c?.notes)
+      // `value` is the natural word for a product spec; `notes` for a data schema. One
+      // field, two vocabularies, so neither kind of bundle has to author the other's.
+      notes: str(c?.notes) ?? str(c?.value)
     })),
     upstream,
     policies: dedupe(policies),

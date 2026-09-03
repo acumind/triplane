@@ -1,4 +1,4 @@
-import { mkdtempSync, mkdirSync, writeFileSync, existsSync, readFileSync, rmSync } from "node:fs";
+import { mkdtempSync, mkdirSync, writeFileSync, existsSync, readFileSync, readdirSync, statSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { compileBundle, compileFiles, buildTools, createMcpHandler, buildAiCatalog, fsStore, validateProposal, shortestPath, upstream } from "@triplane/engine/server";
@@ -222,6 +222,20 @@ console.log("\n— native WebMCP (registerTool handles, no enumerator):");
   } finally {
     delete (globalThis as any).document;
   }
+}
+
+// Every bundle in the repo must compile. Only the demo bundle was checked here, so a
+// broken bundle reached CI's build step rather than the test that should have caught it —
+// and there are four of them now, three of which the demo flips between live.
+console.log("\n— every bundle compiles:");
+for (const dir of readdirSync("bundles").filter((d) => statSync(join("bundles", d)).isDirectory())) {
+  const { graph, issues } = compileBundle(join("bundles", dir));
+  const errs = issues.filter((i) => i.level === "error");
+  check(
+    `bundles/${dir} — ${graph.nodes.length} concepts, ${graph.edges.length} edges`,
+    errs.length === 0,
+    errs.map((e) => `${e.file}: ${e.message}`).join(" | ")
+  );
 }
 
 // One compiler, two front doors. A sandbox that previewed a bundle through a second,

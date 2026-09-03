@@ -35,6 +35,8 @@ jobs:
         run: npm run build:docs
       - name: Build controls bundle
         run: npm run build:controls
+      - name: Build commerce bundle
+        run: npm run build:dhruva
 
       # Leave the demo bundle in place so the app builds against it.
       - name: Rebuild demo bundle

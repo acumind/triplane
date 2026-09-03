@@ -12,6 +12,7 @@
     "build:meridian": "tsx packages/cli/src/build.ts bundles/meridian",
     "build:docs": "TRIPLANE_BUNDLE=triplane-docs tsx packages/cli/src/build.ts bundles/triplane-docs",
     "build:controls": "TRIPLANE_BUNDLE=controls tsx packages/cli/src/build.ts bundles/controls",
+    "build:dhruva": "TRIPLANE_BUNDLE=dhruva tsx packages/cli/src/build.ts bundles/dhruva",
     "typecheck": "tsc -p packages/engine && tsc -p packages/cli",
     "greptest": "bash scripts/greptest.sh",
     "web": "TRIPLANE_DOMAIN=http://localhost:3000 npm run build:meridian && npm run dev --workspace apps/web",

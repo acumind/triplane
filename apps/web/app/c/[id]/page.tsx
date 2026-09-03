@@ -34,6 +34,12 @@ export default async function Concept({ params }: { params: Promise<{ id: string
   const html = renderConcept(rest);
   const domain = graph.nodes.find((x) => x.type === "domain")?.title ?? "";
   const restricted = isRestricted(v.tags);
+  // A data table has typed, classified columns; a product has a spec sheet. Same
+  // frontmatter, but rendering four headers for a two-column spec leaves empty cells,
+  // and calling a spec sheet "Schema" is just wrong.
+  const isSchema = n.type === "table";
+  const hasTypes = v.columns.some((c) => c.type);
+  const hasClasses = v.columns.some((c) => c.classification);
   const lineageCaption = [
     `${v.upstream.length} upstream`,
     `${v.policies.length} policy`,
@@ -122,7 +128,7 @@ export default async function Concept({ params }: { params: Promise<{ id: string
 
         {(v.columns.length > 0 || html.trim()) && (
           <>
-            {v.columns.length > 0 && <h2>Schema</h2>}
+            {v.columns.length > 0 && <h2>{isSchema ? "Schema" : "Specification"}</h2>}
             {/* Schema and prose are both "contents"; withholding them separately would
                 show the reader the same lock twice. Structure above stays visible. */}
             <Gated restricted={restricted} what="This concept" conceptId={n.id} title={n.title} owner={v.owner}>
@@ -130,22 +136,26 @@ export default async function Concept({ params }: { params: Promise<{ id: string
                 <table>
                   <thead>
                     <tr>
-                      <th>Column</th><th style={{ paddingLeft: 8 }}>Type</th>
-                      <th style={{ paddingLeft: 8 }}>Classification</th><th style={{ paddingLeft: 8 }}>Notes</th>
+                      <th>{isSchema ? "Column" : "Spec"}</th>
+                      {hasTypes && <th style={{ paddingLeft: 8 }}>Type</th>}
+                      {hasClasses && <th style={{ paddingLeft: 8 }}>Classification</th>}
+                      <th style={{ paddingLeft: 8 }}>{isSchema ? "Notes" : "Value"}</th>
                     </tr>
                   </thead>
                   <tbody>
                     {v.columns.map((c) => (
                       <tr key={c.name}>
-                        <td style={{ fontFamily: "var(--mono)", fontSize: 13 }}>{c.name}</td>
-                        <td style={{ color: "var(--ink-3)" }}>{c.type}</td>
-                        <td>
-                          {c.classification && (
-                            <span className={c.classification.toLowerCase() === "pii" ? "pill-pii" : "pill-internal"}>
-                              {c.classification}
-                            </span>
-                          )}
-                        </td>
+                        <td style={isSchema ? { fontFamily: "var(--mono)", fontSize: 13 } : undefined}>{c.name}</td>
+                        {hasTypes && <td style={{ color: "var(--ink-3)" }}>{c.type}</td>}
+                        {hasClasses && (
+                          <td>
+                            {c.classification && (
+                              <span className={c.classification.toLowerCase() === "pii" ? "pill-pii" : "pill-internal"}>
+                                {c.classification}
+                              </span>
+                            )}
+                          </td>
+                        )}
                         <td>{c.notes}</td>
                       </tr>
                     ))}
