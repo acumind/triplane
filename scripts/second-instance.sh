@@ -19,6 +19,12 @@ cd "$ROOT"
 
 TARGET=$(git rev-parse HEAD)
 
+# Clear registrations whose directory is gone. Without this, a worktree that was deleted
+# by hand — or left behind by a repo re-init — stays registered, and `worktree add` then
+# refuses with "missing but already registered". Pruning first is what makes re-running
+# this script actually idempotent.
+git worktree prune
+
 if [ ! -d "$DIR" ]; then
   echo "▲ creating worktree $DIR at $TARGET"
   git worktree add --detach "$DIR" "$TARGET"

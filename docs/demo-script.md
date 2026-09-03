@@ -11,7 +11,12 @@ Three instances, one engine — start them in three terminals:
 npm run web                                              # :3000  Meridian Knowledge (tenant)
 npm run instance:docs                                    # :3001  Triplane (the pitch)
 bash scripts/second-instance.sh .instances/controls 3002 controls   # :3002  Northwind Controls
+bash scripts/second-instance.sh .instances/dhruva   3003 dhruva     # :3003  Dhruva (D2C commerce)
 ```
+
+Four deployments is more than a demo needs. **Run all four so the switcher shows four
+hashes, but only flip to one live** — `:3003` is the most legible to a non-technical
+audience.
 
 Checks worth doing five minutes before, not five seconds before:
 
@@ -63,6 +68,16 @@ ANTHROPIC_API_KEY=$(grep '^ANTHROPIC_API_KEY=' apps/web/.env.local | cut -d= -f2
 An agent that has never seen the site: discovers `ai-catalog.json`, verifies the publisher,
 connects over MCP, answers — **citing the same concept ids the sidebar cited.**
 
+**If the audience is not technical, run this against the commerce bundle instead** — same
+proof, an answer anyone can judge:
+```bash
+ANTHROPIC_API_KEY=... npx tsx packages/cli/src/ard-agent.ts http://localhost:3003 \
+  "Is the MG-750 covered under warranty if I use it in a cloud kitchen? And which jars fit it?"
+```
+It finds the commercial-use exclusion in the warranty policy, the same exclusion restated on
+the product page, and the fitment matrix — and notes that the extended plan does not override
+it. Three concepts, one answer, every claim cited.
+
 ### 5 · What agents cannot do (20s)
 ```bash
 curl -s localhost:3000/api/mcp -H 'content-type: application/json' \
@@ -94,19 +109,28 @@ npm run build:meridian
 
 ### 7 · Any bundle, same engine (20s) — the deployment switcher
 Open the **Deployment** dropdown at the top of the left rail. It probes each deployment
-live and shows its own name and **bundle hash** — three deployments, three different
-hashes, one engine, before you click anything. Pick **Northwind Controls**.
+live and shows its own name and **bundle hash** — four deployments, four different hashes,
+one engine, before you click anything. Pick **Dhruva Home Appliances**.
 
-Northwind Controls: financial controls, evidence, attestation owners, review dates.
-Identical interface, different domain, different publisher in the catalog — **the engine
-contains no bundle vocabulary at all**, and `npm run greptest` fails the build if any leaks
-in. Then `:3001` is the docs for the engine, also a Triplane instance.
+A D2C appliance catalogue: products with spec sheets, warranty and returns policies,
+fitment matrices, claim runbooks. Identical interface, a domain with nothing in common with
+the other three, its own publisher in the catalog — **the engine contains no bundle
+vocabulary at all**, and `npm run greptest` fails the build if any leaks in.
+
+Worth saying out loud: *"this bundle compiled clean against the engine before we touched a
+line of it."* That is the claim, not a demo of it.
+
+Northwind Controls (`:3002`) is there if someone asks for a regulated example, and `:3001`
+is the docs for the engine — also a Triplane instance.
 
 ---
 
 ## Optional extensions
 
-**Restricted concepts (20s)** — `:3002/c/revenue-cutoff?access=reader`. A Confidential
+**Restricted concepts (20s)** — `:3003/c/pricing-and-availability?access=reader` is the
+better subject: a commerce bundle whose *pricing* is withheld needs no explanation, and that
+concept exists precisely to say live prices are not in the bundle. `:3002/c/revenue-cutoff?access=reader`
+works the same way. A Confidential
 control: the tree shows a lock, the title, owner and lineage stay visible, the contents are
 withheld behind **Request access**. You can see that it exists and who to ask. `?access=full`
 restores it.
