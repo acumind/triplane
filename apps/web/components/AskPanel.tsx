@@ -9,6 +9,7 @@ import { Menu } from "./Menu";
 import { addFlag, deleteThread, saveThread, threads as savedThreads, type SavedThread } from "../lib/prefs";
 import { copyText } from "../lib/clipboard";
 import { sampleQuestion } from "../lib/page";
+import { renderAnswer } from "../lib/markdown";
 import { useReviewerMode } from "../lib/reviewer";
 import { usePermissions } from "../lib/permissions";
 import { isRestricted } from "../lib/concept";
@@ -32,38 +33,16 @@ type Entry =
   | { kind: "error"; text: string; retry: string }
   | { kind: "answer"; text: string; concepts: string[]; trace: TraceStep[] };
 
-/** The thread as markdown, for Copy and Share thread. */
+/** The thread as markdown, for Copy and Share thread. Questions and answers only —
+ *  a shared transcript should not carry tool noise or a failed attempt. */
 function transcript(log: Entry[]): string {
   return log
-    .filter((e) => e.kind !== "tool")
+    .filter((e) => e.kind === "user" || e.kind === "answer")
     .map((e) => (e.kind === "user" ? `**Q:** ${e.text}` : e.text))
     .join("\n\n");
 }
 
-/**
- * `[concept-id]` becomes a linked superscript citation, and the model's inline markdown
- * is rendered rather than printed — an answer showing literal `**bold**` reads as a bug.
- * Deliberately just bold and code: this is a chat bubble, not a document.
- */
-function inline(text: string, key: string) {
-  return text.split(/(\*\*[^*]+\*\*|`[^`]+`)/g).map((part, i) => {
-    if (/^\*\*[^*]+\*\*$/.test(part)) return <b key={`${key}-${i}`}>{part.slice(2, -2)}</b>;
-    if (/^`[^`]+`$/.test(part)) return <code key={`${key}-${i}`}>{part.slice(1, -1)}</code>;
-    return <span key={`${key}-${i}`}>{part}</span>;
-  });
-}
-
-function withCitations(text: string, ids: Set<string>) {
-  return text.split(/(\[[a-z0-9-]+\])/g).map((part, i) => {
-    const m = part.match(/^\[([a-z0-9-]+)\]$/);
-    if (!m || !ids.has(m[1])) return <span key={i}>{inline(part, String(i))}</span>;
-    return (
-      <Link key={i} href={`/c/${m[1]}`} className="cite" title={`Cited concept: ${m[1]}`}>
-        {m[1]}
-      </Link>
-    );
-  });
-}
+const GAP = /^\s*Not covered:/i;
 
 export function AskPanel() {
   const [open, setOpen] = useState(true);
@@ -165,6 +144,8 @@ export function AskPanel() {
   async function ask(question = q.trim()) {
     if (!question || busy) return;
     setQ("");
+    // Clear the previous answer's path before lighting a new one.
+    emitHighlight([]);
     setLog((l) => [...l, { kind: "user", text: question }]);
     setBusy(true);
     const ac = new AbortController();
@@ -342,19 +323,23 @@ export function AskPanel() {
                 {e.concepts.length} published concept{e.concepts.length === 1 ? "" : "s"} ·{" "}
                 {e.concepts.length >= 3 ? "high" : e.concepts.length ? "partial" : "no"} coverage
               </div>
-              {e.text
-                .split("\n")
-                .filter((line) => !/^\s*Not covered:/i.test(line))
-                .map((line, j) =>
-                  line.trim() ? (
-                    <p key={j} style={{ margin: 0, lineHeight: 1.65, color: "var(--ink)" }}>
-                      {withCitations(line, graphIds)}
-                    </p>
-                  ) : null
-                )}
+              <div
+                className="answer"
+                // Citations are real anchors so they survive the markdown pass; intercept
+                // them here to route without a reload, which would drop the thread.
+                onClick={(ev) => {
+                  const a = (ev.target as HTMLElement).closest("a.cite") as HTMLAnchorElement | null;
+                  if (!a) return;
+                  ev.preventDefault();
+                  router.push(a.getAttribute("href")!);
+                }}
+                dangerouslySetInnerHTML={{
+                  __html: renderAnswer(e.text.split("\n").filter((l) => !GAP.test(l)).join("\n"), graphIds)
+                }}
+              />
               {/* The model is asked to end with "Not covered: …" when the bundle has a
                   gap; that line becomes the callout rather than sitting in the prose. */}
-              {e.text.split("\n").filter((l) => /^\s*Not covered:/i.test(l)).map((l, j) => (
+              {e.text.split("\n").filter((l) => GAP.test(l)).map((l, j) => (
                 <div key={j} style={{ borderLeft: "2px solid var(--rule)", padding: "4px 12px", fontSize: 12.5, color: "var(--ink-2)" }}>
                   {l.trim()} <Link href="/govern">Ask the owner</Link>
                 </div>

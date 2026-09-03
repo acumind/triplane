@@ -42,3 +42,28 @@ export function renderConceptFile(markdown: string): string {
 }
 
 export { splitFrontmatter };
+
+/**
+ * An agent answer, rendered.
+ *
+ * The model replies in markdown — headings, lists, fenced blocks — and printing that as
+ * plain text put literal "###" and backtick fences in front of the reader. Citations are
+ * substituted for real links BEFORE the markdown pass, so they survive it as anchors the
+ * panel can intercept, and only ids that exist in the graph are linked.
+ */
+export function renderAnswer(text: string, ids: Set<string>): string {
+  // Substitute outside code only. A fenced block that happens to contain [an-id] would
+  // otherwise have raw <sup><a …> escaped into it and shown to the reader as source —
+  // which is exactly what a lineage diagram in a ``` block did.
+  const cited = text
+    .split(/(```[\s\S]*?```|`[^`\n]*`)/g)
+    .map((chunk, i) =>
+      i % 2 === 1
+        ? chunk
+        : chunk.replace(/\[([a-z0-9-]+)\]/g, (whole, id: string) =>
+            ids.has(id) ? `<sup><a class="cite" href="/c/${id}" title="Cited concept: ${id}">${id}</a></sup>` : whole
+          )
+    )
+    .join("");
+  return marked.parse(cited) as string;
+}

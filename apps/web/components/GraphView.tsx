@@ -90,7 +90,6 @@ export function GraphView({
   // readable or useless, and constant-size text on a zoomed-out layout collides badly —
   // so a label that would overlap one already placed simply yields.
   const placed = useRef<{ x1: number; y1: number; x2: number; y2: number }[]>([]);
-  const fade = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   // Read once per render pass, never per node per frame — getComputedStyle in a canvas
   // draw callback runs 12× per tick and forces style recalculation each time.
@@ -116,11 +115,11 @@ export function GraphView({
       });
       setState("ready");
     }).catch(() => setState("error"));
-    const onHi = (e: Event) => {
-      setLit(new Set((e as CustomEvent<string[]>).detail));
-      clearTimeout(fade.current);
-      fade.current = setTimeout(() => setLit(new Set()), 8000);
-    };
+    // No timed fade. The highlight is the agent showing its path, and the answer it
+    // belongs to takes far longer to arrive than any fade — an eight-second timer meant
+    // the graph was already dark by the time there was anything to read next to it.
+    // A new question clears it (AskPanel emits an empty set), which is the honest moment.
+    const onHi = (e: Event) => setLit(new Set((e as CustomEvent<string[]>).detail));
     bus?.addEventListener("highlight", onHi);
     return () => bus?.removeEventListener("highlight", onHi);
   }, [focus, reloads]);

@@ -6,7 +6,7 @@ import { listPageTools, executePageTool, registerWebmcpTools, PageToolUnavailabl
 import { pageTypeFor, sampleQuestion } from "../apps/web/lib/page";
 import { conceptView, isRestricted, statusLine } from "../apps/web/lib/concept";
 import { humanizeType, pluralizeType } from "../apps/web/lib/display";
-import { splitLead } from "../apps/web/lib/markdown";
+import { splitLead, renderAnswer } from "../apps/web/lib/markdown";
 
 let failures = 0;
 const check = (label: string, ok: boolean, detail = "") => {
@@ -293,6 +293,13 @@ console.log("\n— concept view model:");
   check("splitLead leaves the rest intact", splitLead("one\n\nrest of it").rest.trim() === "rest of it");
   check("a heading is not a lead", splitLead("# Title\n\nbody").lead === "");
   check("a blockquote is not a lead", splitLead("> quoted\n\nbody").lead === "");
+
+  // Answers are model-authored markdown carrying citations the panel turns into links.
+  const cited = renderAnswer("Cites [users].\n\n```\ndiagram [users]\n```\n\n`code [users]`", new Set(["users"]));
+  check("answer markdown is rendered, not printed", cited.includes("<p>") && cited.includes("<pre>"));
+  check("a citation in prose becomes a link", (cited.match(/class="cite"/g) ?? []).length === 1);
+  check("citations do not leak into code blocks", !cited.includes("&lt;sup&gt;"));
+  check("unknown ids are left alone", !renderAnswer("[not-a-concept]", new Set(["users"])).includes("cite"));
 }
 
 // D6: proposals are linted in the agent's loop, before anything is written.
