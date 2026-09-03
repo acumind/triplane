@@ -1,7 +1,19 @@
 # Deploying to Vercel
 
-Four projects on one repo, differing only by `TRIPLANE_BUNDLE`. Everything below was
-prepared and checked locally; the Vercel clicking is yours.
+Four projects on one repo, differing only by `TRIPLANE_BUNDLE`.
+
+**All four are live** — `triplane-meridian`, `triplane-docs`, `triplane-controls` and
+`triplane-dhruva`, each at `https://<project>.vercel.app`, each serving its own bundle hash.
+`scripts/setup-vercel.sh` does the whole thing end to end and is safe to re-run:
+
+```bash
+bash scripts/setup-vercel.sh          # create, configure, connect the repo, deploy all four
+bash scripts/setup-vercel.sh peers    # pass two: backfill TRIPLANE_PEERS, redeploy
+```
+
+It reads `VERCEL_TOKEN` and `GITHUB_PAT` from `.env.vercel` (gitignored) and the Anthropic
+key from `apps/web/.env.local`. It never passes the token as `--token`: npm echoes the
+command it runs, which would print it into any captured log.
 
 ## What is already handled
 
@@ -14,6 +26,18 @@ prepared and checked locally; the Vercel clicking is yours.
 - `outputFileTracingIncludes` carries `public/graph.json` and `public/bundle/**` into the
   serverless functions. 72 KB per deployment.
 - Plane 3 sends CORS, so a browser-based agent can actually perform ARD discovery.
+
+## Two project settings that are not reachable from the CLI
+
+Both blocked the first deploys, and both are PATCHed by the script via
+`/v9/projects/<name>`. If you create a project by hand, turn them off yourself:
+
+- **`enablePreviewFeedback` / `enableProductionFeedback`.** Comments inject the Vercel
+  Toolbar into the HTML, which is incompatible with immutable static uploads. The deploy
+  fails outright with `IMMUTABLE_STATIC_PATCH_PREVIEW_COMMENTS` — but the CLI reports only
+  "Unexpected error". The real reason is visible only in `GET /v6/deployments`.
+- **`ssoProtection`.** New projects get a deployment-protection wall, so every request 302s
+  to a Vercel login. Set it to `null`; a public demo cannot sit behind SSO.
 
 ## Per project
 
@@ -53,6 +77,12 @@ TRIPLANE_PEERS=Meridian Knowledge=https://…,Triplane=https://…,Northwind Con
 
 The switcher then lists four deployments with four distinct bundle hashes.
 
+Two details the script had to learn: `vercel project inspect` does **not** print the
+production URL, so the aliases come from `GET /v9/projects/<name>` → `targets.production.alias`
+(take the shortest — the longer one is the team-scoped alias). And the four redeploys run
+sequentially on purpose: `vercel deploy` reads `.vercel/project.json` when it starts and the
+next `vercel link` overwrites that file, so backgrounding them races the link.
+
 ## Check in this order
 
 1. **A concept page.** If `process.cwd()` + `public/graph.json` does not resolve inside a
@@ -64,6 +94,20 @@ The switcher then lists four deployments with four distinct bundle hashes.
 4. `npx tsx packages/cli/src/ard-agent.ts https://<url> "…"` — completes with no endpoint
    rewrite, which is the proof the catalog is honest about where it lives.
 5. `/govern` — a real PR-backed queue rather than an error.
+
+## Verified on the live deployments
+
+- Concept pages render with governance metadata on all four — `process.cwd()` +
+  `public/graph.json` **does** resolve inside a Vercel function.
+- Each catalog advertises its own origin (`https://triplane-<x>.vercel.app`), no placeholder.
+- `/api/mcp` lists exactly `search_concepts, get_concept, get_join_path, explain_metric` on
+  all four — no write or page-scoped tool crossed the boundary.
+- `/api/govern` returns `{"backend":"github","rebuildsLocally":false}` on all four.
+- The switcher lists all four peers from every deployment, hashes `864b8d1bfab2` /
+  `d2e60f8d5d7f` / `300eaccc0e0e` / `733e60062106`.
+- The full ARD loop completes cold against `triplane-dhruva` with no endpoint rewrite,
+  citing `mg-750` and `warranty-policy`.
+- An unknown concept still 404s.
 
 ## Approval is the deploy, literally
 

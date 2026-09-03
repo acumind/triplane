@@ -11,9 +11,14 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
+# The CLI reads VERCEL_TOKEN from the environment. Never pass it as --token: npm echoes
+# the command it runs, which prints the token in plaintext into any captured log.
 V="npx --yes vercel@latest"
 [ -f .env.vercel ] && set -a && . ./.env.vercel && set +a
-[ -n "${VERCEL_TOKEN:-}" ] && V="$V --token $VERCEL_TOKEN"
+if [ -z "${VERCEL_TOKEN:-}" ] && ! $V whoami >/dev/null 2>&1; then
+  echo "✗ Not authenticated. Put VERCEL_TOKEN in .env.vercel, or run \`npx vercel login\`."
+  exit 1
+fi
 
 # name:bundle — the ONLY thing that differs between the four deployments.
 PROJECTS=(
@@ -24,6 +29,24 @@ PROJECTS=(
 )
 
 secret() { grep -m1 "^$1=" "$2" 2>/dev/null | cut -d= -f2- | tr -d '\r\n'; }
+
+API="https://api.vercel.com"
+TEAM=$(curl -s -H "Authorization: Bearer ${VERCEL_TOKEN:-}" "$API/v2/teams" \
+  | python3 -c "import sys,json;t=json.load(sys.stdin).get('teams',[]);print(t[0]['id'] if t else '')" 2>/dev/null || true)
+
+# Two project defaults have to be turned off, and neither is reachable from the CLI:
+#
+#  - Preview/production comments inject the Vercel Toolbar into the HTML, which is
+#    incompatible with immutable static uploads. The deploy fails outright with
+#    IMMUTABLE_STATIC_PATCH_PREVIEW_COMMENTS, and the CLI reports only "Unexpected error".
+#  - Deployment protection puts an SSO wall in front of new projects, so every request
+#    302s to a login page. A public demo cannot be behind it.
+settings() {
+  curl -s -X PATCH -H "Authorization: Bearer ${VERCEL_TOKEN:-}" -H "content-type: application/json" \
+    "$API/v9/projects/$1${TEAM:+?teamId=$TEAM}" \
+    -d '{"enablePreviewFeedback":false,"enableProductionFeedback":false,"ssoProtection":null}' >/dev/null
+  echo "    comments off, deployment protection off"
+}
 ANTHROPIC=$(secret ANTHROPIC_API_KEY apps/web/.env.local)
 GH_TOKEN=${GITHUB_PAT:-}
 
@@ -45,25 +68,35 @@ set_env() {  # project key value
 if [ "${1:-create}" = "peers" ]; then
   # Pass two. Peers name the OTHER deployments, so they cannot be known until all four
   # exist — this reads the live URLs back and writes them to every project.
+  # `vercel project inspect` does not print the production alias, so read it from the API.
+  # targets.production.alias holds the stable <project>.vercel.app name; the per-deployment
+  # url changes on every build and would go stale the moment anything redeploys.
   echo "▲ collecting deployment URLs"
   LIST=""
   for entry in "${PROJECTS[@]}"; do
     name="${entry%%:*}"
-    url=$($V project inspect "$name" 2>/dev/null | grep -oE 'https://[a-z0-9.-]+\.vercel\.app' | head -1)
+    url=$(curl -s -H "Authorization: Bearer ${VERCEL_TOKEN:-}" \
+      "$API/v9/projects/$name${TEAM:+?teamId=$TEAM}" | python3 -c "
+import sys, json
+t = ((json.load(sys.stdin).get('targets') or {}).get('production') or {})
+a = t.get('alias') or []
+print('https://' + min(a, key=len) if a else (('https://' + t['url']) if t.get('url') else ''))" 2>/dev/null || true)
     [ -z "$url" ] && { echo "  ✗ no URL for $name — deploy it first"; exit 1; }
     label=$(TRIPLANE_BUNDLE="${entry##*:}" npx --yes tsx -e 'import c from "./triplane.config"; console.log((c as any).brand.name)' 2>/dev/null | tail -1)
     LIST="${LIST:+$LIST,}${label}=${url}"
-    echo "  $name → $url"
+    echo "  $name → $label ${url}"
   done
+  # Sequential on purpose: `vercel deploy` reads .vercel/project.json when it starts, and
+  # the next `link` overwrites that file. Backgrounding these deploys races the link and
+  # can ship one project's build to another.
   for entry in "${PROJECTS[@]}"; do
     name="${entry%%:*}"
     $V link --project "$name" --yes >/dev/null
     echo "  $name"
     set_env "$name" TRIPLANE_PEERS "$LIST"
-    $V deploy --prod >/dev/null &
+    $V deploy --prod >/dev/null
   done
-  wait
-  echo "▲ peers set on all four; redeploys running"
+  echo "▲ peers set on all four; all four redeployed"
   exit 0
 fi
 
@@ -72,6 +105,7 @@ for entry in "${PROJECTS[@]}"; do
   echo "▲ $name  (bundle: $bundle)"
   $V project add "$name" >/dev/null 2>&1 || echo "    (already exists)"
   $V link --project "$name" --yes >/dev/null
+  settings "$name"
 
   set_env "$name" TRIPLANE_BUNDLE "$bundle"
   set_env "$name" ANTHROPIC_API_KEY "$ANTHROPIC"

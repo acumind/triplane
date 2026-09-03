@@ -18,8 +18,15 @@ See `docs/triplane-tasks.md` for the full record, including every defect fixed (
 threads, trace, flag) and the no-access state. Permissions are stubbed on query params:
 `?reviewer=1` grants edit/publish, `?access=reader` revokes canViewPII.
 
-**Not yet done:** hosting (B1 acceptance, B2 on Vercel — needs a GitHub remote), the origin
-trial (B3), the demo rehearsal (B4), and the handoff's loading/error states.
+**Live on Vercel:** four deployments off one repo and one engine, differing only by
+`TRIPLANE_BUNDLE` — [meridian](https://triplane-meridian.vercel.app) `864b8d1bfab2`,
+[docs](https://triplane-docs.vercel.app) `d2e60f8d5d7f`,
+[controls](https://triplane-controls.vercel.app) `300eaccc0e0e`,
+[dhruva](https://triplane-dhruva.vercel.app) `733e60062106`. All four serve plane 3, run the
+write plane on the GitHub store, and list each other in the switcher. Runbook and the
+settings Vercel hides from the CLI: `docs/deploy.md`. Re-run with `scripts/setup-vercel.sh`.
+
+**Not yet done:** the origin trial (T6) and the demo rehearsal (T7).
 
 ## Commands
 
@@ -95,7 +102,10 @@ Restart `npm run web` after editing `.env.local`; it is read at startup, not on 
 with a local-contract fallback, plane-3 endpoints serve, and the governance console
 round-trips a proposal. Details and the defect log: `docs/triplane-tasks.md`.
 
-**T5 — Two deployments, one engine.** Vercel project A: `TRIPLANE_BUNDLE=meridian`; project B: `TRIPLANE_BUNDLE=triplane-docs`. Build command (root): `npx tsx packages/cli/src/build.ts bundles/$TRIPLANE_BUNDLE && npm run build --workspace apps/web`. Set `ANTHROPIC_API_KEY` on both; update `publisher.domain` per deployment before catalog generation. Acceptance: both sites live, visibly same engine, different brand/bundle — the white-label flip for the pitch.
+**T5 — done.** Four deployments, one engine, on Vercel; see the state-of-the-repo note above
+and `docs/deploy.md`. The build is `vercel.json`'s `npm run build:bundle && npm run build
+--workspace apps/web`, and `TRIPLANE_DOMAIN` now defaults to `VERCEL_PROJECT_PRODUCTION_URL`,
+so nothing about the origin is set by hand.
 
 **T6 — WebMCP origin trial.** Register both origins at Chrome origin trials (WebMCP, Chrome 149–156); put tokens in `NEXT_PUBLIC_WEBMCP_OT_TOKEN`. Verify with the WebMCP DevTools extension: tools listed globally, `compare_metrics` appears only on `/c/weekly-active-users` and `/c/churn-rate` (the `toolchange` beat). Acceptance: screen-record the DevTools panel as backup.
 
