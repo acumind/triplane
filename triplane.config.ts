@@ -19,6 +19,24 @@ const config: TriplaneConfig = {
     tagline: "Publish once. Humans read it, agents drive it, the ecosystem discovers it.",
     accent: "#FFD400" // legacy: the current design reserves colour for status (guardrail 6)
   },
+  // Sibling deployments for the sidebar switcher. Set TRIPLANE_PEERS to
+  // "Name=url,Name=url" to override. The local demo trio is the default in development
+  // only — a hosted tenant advertising other tenants would be a data-boundary mistake,
+  // not a convenience.
+  peers: process.env.TRIPLANE_PEERS
+    ? process.env.TRIPLANE_PEERS.split(",")
+        .map((entry) => {
+          const [name, url] = entry.split("=");
+          return { name: (name ?? "").trim(), url: (url ?? "").trim() };
+        })
+        .filter((p) => p.name && p.url)
+    : process.env.NODE_ENV === "production"
+    ? []
+    : [
+        { name: "Meridian Knowledge", url: "http://localhost:3000" },
+        { name: "Triplane", url: "http://localhost:3001" },
+        { name: "Northwind Controls", url: "http://localhost:3002" }
+      ],
   // The pitch belongs to Triplane's own deployment. A tenant's knowledge base advertising
   // its vendor would undo the white-label claim the tenant is there to demonstrate.
   landing: isDocs,

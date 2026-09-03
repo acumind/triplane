@@ -31,9 +31,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
   const byType = new Map<string, TreeItem[]>();
   for (const n of [...(graph?.nodes ?? [])].sort((a, b) => a.title.localeCompare(b.title))) {
-    // The domain concept is the switcher above the tree; listing it again as its own
-    // group would say the same thing twice.
-    if (n.type === "domain") continue;
     const fm = n.frontmatter as any;
     const status = String(fm?.status ?? "Published");
     const classifications = Array.isArray(fm?.classifications) ? fm.classifications.map(String) : [];
@@ -41,8 +38,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   }
   const groups = [...byType.entries()].sort((a, b) => a[0].localeCompare(b[0]));
   // The domain concept names the scope; fall back to the brand when a bundle has none.
-  const domains = (graph?.nodes ?? []).filter((n) => n.type === "domain").map((n) => ({ id: n.id, title: n.title }));
-  const domain = domains[0]?.title ?? config.brand.name;
+  // The switcher now names the DEPLOYMENT, so the domain concept goes back in the tree —
+  // otherwise it would be reachable only by URL or ⌘K.
+  const domain = config.brand.name;
 
   return (
     <html lang="en" className={sans.variable} style={{ ["--accent" as any]: config.brand.accent }}>
@@ -53,7 +51,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body>
         <div className="shell">
-          <ConceptSidebar brand={config.brand.name} domain={domain} domains={domains} groups={groups} error={treeError} />
+          <ConceptSidebar
+            brand={config.brand.name}
+            domain={domain}
+            peers={config.peers ?? []}
+            bundleHash={graph?.bundleHash ?? ""}
+            groups={groups}
+            error={treeError}
+          />
           <main className="col-main">
             <WebMCPProvider>{children}</WebMCPProvider>
           </main>

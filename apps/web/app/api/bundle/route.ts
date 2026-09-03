@@ -12,6 +12,12 @@ import type { Graph } from "@triplane/engine";
  */
 export const dynamic = "force-dynamic";
 
+/** Raw OKF access is for other origins by design — see the note in app/api/mcp/route.ts. */
+const CORS = { "access-control-allow-origin": "*", "access-control-allow-methods": "GET, OPTIONS" };
+export async function OPTIONS() {
+  return new Response(null, { status: 204, headers: CORS });
+}
+
 const publicDir = () => join(process.cwd(), "public");
 const graph = (): Graph => JSON.parse(readFileSync(join(publicDir(), "graph.json"), "utf8"));
 
@@ -21,11 +27,10 @@ export async function GET(req: Request) {
   if (!path) {
     try {
       const g = graph();
-      return NextResponse.json({
-        format: "okf",
-        bundleHash: g.bundleHash,
-        files: g.nodes.map((n) => n.path)
-      });
+      return NextResponse.json(
+        { format: "okf", bundleHash: g.bundleHash, files: g.nodes.map((n) => n.path) },
+        { headers: CORS }
+      );
     } catch (e: any) {
       return NextResponse.json({ error: `Bundle unavailable: ${e?.message ?? e}` }, { status: 500 });
     }
@@ -42,7 +47,7 @@ export async function GET(req: Request) {
   }
   try {
     return new Response(readFileSync(join(publicDir(), "bundle", safe), "utf8"), {
-      headers: { "content-type": "text/markdown; charset=utf-8" }
+      headers: { "content-type": "text/markdown; charset=utf-8", ...CORS }
     });
   } catch {
     return NextResponse.json({ error: `No such file: ${safe}` }, { status: 404 });

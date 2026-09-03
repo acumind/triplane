@@ -3,7 +3,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useRouter } from "next/navigation";
 import { Icon } from "./Icon";
-import { Menu } from "./Menu";
+import { DeploymentSwitcher } from "./DeploymentSwitcher";
 import { humanizeType } from "../lib/display";
 import { conceptIdFromPath } from "../lib/page";
 import { emitAsk } from "../lib/bus";
@@ -21,13 +21,15 @@ export interface TreeItem { id: string; title: string; status: string; classific
 export function ConceptSidebar({
   brand,
   domain,
-  domains,
+  peers,
+  bundleHash,
   groups,
   error
 }: {
   brand: string;
   domain: string;
-  domains: { id: string; title: string }[];
+  peers: { name: string; url: string }[];
+  bundleHash: string;
   groups: [string, TreeItem[]][];
   /** Non-empty when the bundle could not be read; the tree cannot be shown at all. */
   error?: string;
@@ -69,28 +71,10 @@ export function ConceptSidebar({
       </div>
 
       <div style={{ padding: "0 16px 6px", fontSize: 11, color: "var(--hint)", display: "flex", justifyContent: "space-between" }}>
-        <span>Domain</span>
+        <span>Deployment</span>
       </div>
       <div style={{ margin: "0 12px 14px" }}>
-        <Menu
-          label="Switch domain"
-          tip="Switch domain"
-          align="left"
-          width={208}
-          variant="row"
-          items={
-            domains.length
-              ? domains.map((d) => ({
-                  label: d.title,
-                  note: d.title === domain ? "current" : undefined,
-                  onSelect: () => router.push(`/c/${d.id}`)
-                }))
-              : [{ label: "No other domain in this bundle", disabled: true }]
-          }
-        >
-          <span style={{ flex: 1, textAlign: "left", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{domain}</span>
-          <span style={{ color: "var(--hint)", display: "grid", placeItems: "center" }}><Icon name="chevron" size={12} /></span>
-        </Menu>
+        <DeploymentSwitcher current={domain} currentHash={bundleHash} peers={peers} />
       </div>
 
       <div style={{ flex: 1, overflow: "auto", padding: "0 12px 12px" }}>

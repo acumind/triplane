@@ -9,6 +9,10 @@ export interface TriplaneConfig {
   /** Show the product pitch at "/" and move the concept index to "/concepts". Off for a
    *  tenant deployment: a customer's knowledge base should not advertise its vendor. */
   landing?: boolean;
+  /** Sibling deployments offered in the sidebar switcher. Each is a separate deployment
+   *  of this engine with its own bundle — they are navigated to, never merged. Empty by
+   *  default in production: a tenant must not advertise other tenants. */
+  peers?: { name: string; url: string }[];
   planes: {
     webmcp: { enabled: boolean; originTrialToken?: string };
     ard: { enabled: boolean; mcp: boolean };

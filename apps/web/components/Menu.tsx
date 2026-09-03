@@ -21,7 +21,8 @@ export function Menu({
   label,
   align = "right",
   width = 200,
-  variant = "icon"
+  variant = "icon",
+  onOpen
 }: {
   items: MenuItem[];
   children: React.ReactNode;
@@ -31,6 +32,8 @@ export function Menu({
   width?: number;
   /** "icon" is a 30px square control; "row" fills its container like a list row. */
   variant?: "icon" | "row";
+  /** Fired when the menu opens — for items whose contents are worth fetching lazily. */
+  onOpen?: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const wrap = useRef<HTMLDivElement>(null);
@@ -58,7 +61,10 @@ export function Menu({
         aria-label={label}
         aria-expanded={open}
         aria-haspopup="menu"
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => {
+          if (!open) onOpen?.();
+          setOpen((v) => !v);
+        }}
       >
         {children}
       </button>
