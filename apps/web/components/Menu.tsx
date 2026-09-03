@@ -20,6 +20,7 @@ export function Menu({
   tip,
   label,
   align = "right",
+  drop = "down",
   width = 200,
   variant = "icon",
   onOpen
@@ -29,6 +30,8 @@ export function Menu({
   tip: string;
   label: string;
   align?: "left" | "right";
+  /** The sidebar clips its overflow, so a trigger near its bottom has to open upward. */
+  drop?: "down" | "up";
   width?: number;
   /** "icon" is a 30px square control; "row" fills its container like a list row. */
   variant?: "icon" | "row";
@@ -69,7 +72,12 @@ export function Menu({
         {children}
       </button>
       {open && (
-        <div role="menu" className="menu" style={{ width, [align]: 0 } as React.CSSProperties}>
+        <div
+          role="menu"
+          className="menu"
+          data-drop={drop}
+          style={{ width, [align]: 0 } as React.CSSProperties}
+        >
           {items.map((it) =>
             it.href && !it.disabled ? (
               <a

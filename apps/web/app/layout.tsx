@@ -57,6 +57,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             peers={config.peers ?? []}
             bundleHash={graph?.bundleHash ?? ""}
             groups={groups}
+            landing={!!config.landing}
             error={treeError}
           />
           <main className="col-main">
@@ -64,7 +65,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           </main>
           <AskPanel />
         </div>
-        <CommandPalette />
+        <CommandPalette landing={!!config.landing} />
       </body>
     </html>
   );

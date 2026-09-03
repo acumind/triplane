@@ -1,13 +1,14 @@
 /**
  * The handoff calls for "Lucide or similar, 1.5px stroke, 16px". These are drawn
- * inline rather than pulled from a package: fourteen glyphs do not justify a
+ * inline rather than pulled from a package: twenty-one glyphs do not justify a
  * dependency, and inlining keeps them on the same stroke and grid.
  */
 const P = { fill: "none", stroke: "currentColor", strokeWidth: 1.5, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
 
 export type IconName =
   | "search" | "plus" | "bell" | "share" | "download" | "history" | "more"
-  | "threads" | "info" | "close" | "copy" | "flag" | "trace" | "send" | "chevron" | "lock";
+  | "threads" | "info" | "close" | "copy" | "flag" | "trace" | "send" | "chevron" | "lock"
+  | "index" | "inbox" | "beaker" | "braces" | "user";
 
 const PATHS: Record<IconName, React.ReactNode> = {
   search: <><circle cx="7.5" cy="7.5" r="4.75" {...P} /><path d="M11 11l3.2 3.2" {...P} /></>,
@@ -25,7 +26,12 @@ const PATHS: Record<IconName, React.ReactNode> = {
   trace: <path d="M2.5 8h2.2l1.6-4 2.4 8 1.6-4h3.2" {...P} />,
   send: <><path d="M8 12.5v-9" {...P} /><path d="M4.5 7L8 3.5 11.5 7" {...P} /></>,
   chevron: <path d="M4.5 6.5L8 10l3.5-3.5" {...P} />,
-  lock: <><rect x="3.5" y="7" width="9" height="6" rx="1.5" {...P} /><path d="M5.8 7V5.4a2.2 2.2 0 014.4 0V7" {...P} /></>
+  lock: <><rect x="3.5" y="7" width="9" height="6" rx="1.5" {...P} /><path d="M5.8 7V5.4a2.2 2.2 0 014.4 0V7" {...P} /></>,
+  index: <><path d="M3 4.2h10M3 8h10M3 11.8h6.5" {...P} /><circle cx="13" cy="11.8" r=".9" fill="currentColor" /></>,
+  inbox: <><path d="M2.8 8.5h3l.8 1.6h2.8l.8-1.6h3" {...P} /><path d="M4.4 3.5h7.2l1.6 5v3.4a1.1 1.1 0 01-1.1 1.1H3.9a1.1 1.1 0 01-1.1-1.1V8.5z" {...P} /></>,
+  beaker: <><path d="M6.3 2.6v3.9L3.1 11.6A1.2 1.2 0 004.1 13.4h7.8a1.2 1.2 0 001-1.8L9.7 6.5V2.6" {...P} /><path d="M5.6 2.6h4.8" {...P} /><path d="M4.6 9.8h6.8" {...P} /></>,
+  braces: <><path d="M6.4 2.8c-1.4 0-1.6.8-1.6 2.1 0 1.4-.3 2.1-1.4 2.1v2c1.1 0 1.4.7 1.4 2.1 0 1.3.2 2.1 1.6 2.1" {...P} /><path d="M9.6 2.8c1.4 0 1.6.8 1.6 2.1 0 1.4.3 2.1 1.4 2.1v2c-1.1 0-1.4.7-1.4 2.1 0 1.3-.2 2.1-1.6 2.1" {...P} /></>,
+  user: <><circle cx="8" cy="5.8" r="2.5" {...P} /><path d="M3.4 13.2a4.6 4.6 0 019.2 0" {...P} /></>
 };
 
 export function Icon({ name, size = 16 }: { name: IconName; size?: number }) {

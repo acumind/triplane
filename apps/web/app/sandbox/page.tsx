@@ -91,7 +91,9 @@ export default function Sandbox() {
   return (
     <>
       <div className="topbar-sticky">
-        <Link href="/" style={{ color: "inherit", textDecoration: "none" }}>Triplane</Link>
+        {/* Not the brand: this page is client-only, and a client bundle cannot read the
+            deployment's brand out of config — it would say "Triplane" on every tenant. */}
+        <Link href="/" style={{ color: "inherit", textDecoration: "none" }}>Home</Link>
         <span>/</span>
         <span style={{ color: "var(--ink)" }}>sandbox</span>
         <span style={{ marginLeft: "auto", fontSize: 12, color: "var(--hint)" }}>

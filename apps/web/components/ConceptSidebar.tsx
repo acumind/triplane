@@ -4,10 +4,11 @@ import { usePathname } from "next/navigation";
 import { useRouter } from "next/navigation";
 import { Icon } from "./Icon";
 import { DeploymentSwitcher } from "./DeploymentSwitcher";
+import { ShellNav } from "./ShellNav";
 import { humanizeType } from "../lib/display";
 import { conceptIdFromPath } from "../lib/page";
 import { emitAsk } from "../lib/bus";
-import { useReviewerMode } from "../lib/reviewer";
+import { useReviewerMode, setReviewerMode } from "../lib/reviewer";
 import { usePermissions } from "../lib/permissions";
 import { isRestricted } from "../lib/concept";
 
@@ -24,6 +25,7 @@ export function ConceptSidebar({
   peers,
   bundleHash,
   groups,
+  landing,
   error
 }: {
   brand: string;
@@ -31,6 +33,8 @@ export function ConceptSidebar({
   peers: { name: string; url: string }[];
   bundleHash: string;
   groups: [string, TreeItem[]][];
+  /** Config decides whether "/" is the pitch or the index, and the nav has to follow. */
+  landing: boolean;
   /** Non-empty when the bundle could not be read; the tree cannot be shown at all. */
   error?: string;
 }) {
@@ -59,11 +63,12 @@ export function ConceptSidebar({
 
       <div style={{ padding: "4px 12px 14px" }}>
         {/* A concept can only enter the bundle as a proposal, so "new" seeds the agent
-            with a draft request in reviewer mode and otherwise explains the gate. */}
+            with a draft request in reviewer mode, and otherwise carries the intent to
+            /govern so that page can explain the gate in terms of what was clicked. */}
         <button
           className="row-btn"
-          data-tip={reviewer ? "Draft a concept for review" : "Requires reviewer mode"}
-          onClick={() => (reviewer ? emitAsk("Draft a concept for ") : router.push("/govern"))}
+          data-tip={reviewer ? "Draft a concept for review" : "How a concept gets made"}
+          onClick={() => (reviewer ? emitAsk("Draft a concept for ") : router.push("/govern?intent=new"))}
         >
           <span style={{ color: "var(--ink-3)", display: "grid", placeItems: "center" }}><Icon name="plus" /></span>
           New concept
@@ -114,6 +119,8 @@ export function ConceptSidebar({
         ))}
       </div>
 
+      <ShellNav landing={landing} />
+
       <div
         style={{
           display: "flex", alignItems: "center", gap: 8, padding: "12px 16px",
@@ -125,7 +132,11 @@ export function ConceptSidebar({
         <span style={{ marginLeft: "auto", color: "var(--hint)" }}>
           <Link href="/govern" style={{ color: "inherit" }}>Audit</Link>
           {" · "}
-          <Link href="/govern?reviewer=1" style={{ color: "inherit" }}>Admin</Link>
+          {/* The param is what a fresh tab reads; the setter is what a tab already on
+              /govern needs, since a query-only push preserves client state. */}
+          <Link href="/govern?reviewer=1" style={{ color: "inherit" }} onClick={() => setReviewerMode(true)}>
+            Admin
+          </Link>
         </span>
       </div>
     </aside>

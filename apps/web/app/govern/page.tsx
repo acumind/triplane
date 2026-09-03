@@ -1,8 +1,8 @@
 "use client";
-import { useCallback, useEffect, useState } from "react";
-import Link from "next/link";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { renderConceptFile } from "../../lib/markdown";
-import { useReviewerMode } from "../../lib/reviewer";
+import { useReviewerMode, setReviewerMode } from "../../lib/reviewer";
+import { emitAsk } from "../../lib/bus";
 import { Notice } from "../../components/Notice";
 import { Icon } from "../../components/Icon";
 
@@ -19,6 +19,9 @@ import { Icon } from "../../components/Icon";
 
 type FileDiff = { path: string; proposed: string; current: string | null };
 type Proposal = { id: string; message?: string; createdAt?: string; diffUrl: string; files: FileDiff[] };
+/** Why the visitor is here: "New concept" and "Propose change" send a reader to this
+ *  page rather than to an editor, because there is no editor. */
+type Intent = { kind: "new" | "change"; subject?: string };
 
 export default function Govern() {
   const reviewer = useReviewerMode();
@@ -26,7 +29,19 @@ export default function Govern() {
   const [backend, setBackend] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState("");
-  const [published, setPublished] = useState<{ id: string; hash: string; concepts: number } | null>(null);
+  // What the last approval actually did. Two different things wear the word "approve"
+  // here: on the fs store it rebuilds and the site changes; on the GitHub store it merges
+  // a PR and the site does not change until something rebuilds from that commit. Saying
+  // nothing in the second case is how an approval reads as a publish that vanished.
+  const [outcome, setOutcome] = useState<
+    | { kind: "published"; hash: string; concepts: number }
+    | { kind: "merged"; id: string; base: string; hash: string }
+    | null
+  >(null);
+  // Read off location for the same reason reviewer mode is: useSearchParams would put a
+  // Suspense boundary on the route for a value only the client ever has.
+  const [intent, setIntent] = useState<Intent | null>(null);
+  const seeded = useRef(false);
 
   const load = useCallback(async () => {
     setError("");
@@ -41,6 +56,20 @@ export default function Govern() {
     load();
   }, [load]);
 
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search);
+    const kind = q.get("intent");
+    if (kind === "new" || kind === "change") setIntent({ kind, subject: q.get("for") ?? undefined });
+  }, []);
+
+  // In reviewer mode the intent is answered rather than explained: open the composer on
+  // the draft the visitor came here to write, once.
+  useEffect(() => {
+    if (!reviewer || !intent || seeded.current) return;
+    seeded.current = true;
+    emitAsk(intent.kind === "new" ? "Draft a concept for " : `Draft a change to ${intent.subject ?? ""} that `);
+  }, [reviewer, intent]);
+
   async function act(id: string, action: "approve" | "reject") {
     setBusy(id);
     setError("");
@@ -52,10 +81,15 @@ export default function Govern() {
       });
       const data = await res.json().catch(() => ({ error: `Server returned ${res.status}` }));
       if (data.error) throw new Error(data.error);
-      if (action === "approve" && data.rebuilt) {
-        // Don't claim "published" on the say-so of the route: read the artifact back.
+      if (action === "approve") {
+        // Don't claim anything on the say-so of the route: read the artifact back. The
+        // hash is the evidence either way — that it moved, or that it did not.
         const g = await fetch(`/graph.json?t=${Date.now()}`, { cache: "no-store" }).then((r) => r.json());
-        setPublished({ id, hash: g.bundleHash, concepts: g.nodes.length });
+        setOutcome(
+          data.rebuilt
+            ? { kind: "published", hash: g.bundleHash, concepts: g.nodes.length }
+            : { kind: "merged", id, base: data.base || "main", hash: g.bundleHash }
+        );
       }
       await load();
     } catch (e: any) {
@@ -97,30 +131,79 @@ export default function Govern() {
           <Notice
             inset
             action={
-              <Link href="/govern?reviewer=1" className="btn-secondary" style={{ textDecoration: "none" }}>
-                Turn on reviewer mode
-              </Link>
+              <button className="btn-secondary" onClick={() => setReviewerMode(true)}>
+                {intent ? "Turn on reviewer mode and draft" : "Turn on reviewer mode"}
+              </button>
             }
           >
-            Reviewer mode is off, so the write tool and the Propose affordance are hidden.
+            {intent ? (
+              <>
+                <b style={{ fontWeight: 500, color: "var(--ink)" }}>
+                  Nothing is filled in here — {intent.kind === "new" ? "a concept" : "a change"} starts as a draft the
+                  agent writes.
+                </b>{" "}
+                You describe it in the Ask panel on the right, the agent writes the file, and it arrives in this queue
+                for your approval. Reviewer mode is what turns that drafting tool on.
+              </>
+            ) : (
+              <>Reviewer mode is off, so the write tool and the Propose affordance are hidden.</>
+            )}
+          </Notice>
+        )}
+
+        {reviewer && intent && (
+          <Notice inset>
+            The Ask panel on the right is open with a draft request
+            {intent.subject ? (
+              <>
+                {" "}
+                for <code>{intent.subject}</code>
+              </>
+            ) : null}
+            . Finish the sentence and send it — the agent&rsquo;s draft lands here for you to approve.
           </Notice>
         )}
 
         {error && <Notice inset action={<button className="btn-secondary" onClick={load}>Retry</button>}>{error}</Notice>}
 
-        {published && (
+        {outcome?.kind === "published" && (
           <Notice inset>
             <i className="dot" style={{ display: "inline-block", marginRight: 8 }} />
-            Published. Bundle <code>{published.hash}</code>, {published.concepts} concepts — live on all three planes.
+            Published. Bundle <code>{outcome.hash}</code>, {outcome.concepts} concepts — live on all three planes.
+          </Notice>
+        )}
+
+        {outcome?.kind === "merged" && (
+          <Notice inset>
+            <i className="dot-draft" style={{ display: "inline-block", marginRight: 8 }} />
+            <span>
+              Approved — proposal <code>{outcome.id}</code> is merged into <code>{outcome.base}</code>.{" "}
+              <b style={{ fontWeight: 500, color: "var(--ink)" }}>Nothing here has changed yet.</b> This site still
+              serves bundle <code>{outcome.hash}</code>; all three planes move when the deployment rebuilds from that
+              commit. If it does not rebuild itself, the concept is in the repo and not on the site.
+            </span>
           </Notice>
         )}
 
         {proposals === null && !error && <Notice>Reading the queue…</Notice>}
-        {proposals?.length === 0 && (
-          <p style={{ color: "var(--ink-2)" }}>
-            Nothing awaiting review. Ask the sidebar agent to draft a concept in reviewer mode and it will appear here.
-          </p>
-        )}
+        {proposals?.length === 0 &&
+          !(reviewer && intent) &&
+          (reviewer ? (
+            <Notice
+              action={
+                <button className="btn-secondary" onClick={() => emitAsk("Draft a concept for ")}>
+                  Draft a concept
+                </button>
+              }
+            >
+              Nothing awaiting review. A draft starts in the Ask panel and lands here.
+            </Notice>
+          ) : (
+            <p style={{ color: "var(--ink-2)" }}>
+              Nothing awaiting review. A concept reaches this queue as an agent&rsquo;s draft, and leaves it when a
+              person approves.
+            </p>
+          ))}
 
       {proposals?.map((p) => (
         <article key={p.id} style={card}>

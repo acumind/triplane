@@ -1,12 +1,12 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useStoredMode, writeMode } from "./mode";
 import { useReviewerMode } from "./reviewer";
 
 /**
  * The permission stub the handoff names: canEdit, canPublish, canViewPII.
  *
- * Two toggles, both the same query-param + localStorage pattern as reviewer mode, because
- * there is no auth here and pretending otherwise would be worse than a stub:
+ * Two toggles, both on the same store as reviewer mode, because there is no auth here
+ * and pretending otherwise would be worse than a stub:
  *   ?reviewer=1  → canEdit, canPublish (drafting and approving)
  *   ?access=reader → revokes canViewPII, so restricted concepts render their no-access state
  *
@@ -21,21 +21,20 @@ export interface Permissions {
 }
 
 const KEY = "triplane.access";
+const ACCEPTS = ["reader", "full"] as const;
+
+/**
+ * Flip access in place. Nothing in the UI calls this yet — access is switched by URL,
+ * as the handoff's no-access state describes — but it exists so a switcher does not have
+ * to reach past the store and reintroduce the stale-read it was written to avoid.
+ */
+export function setAccessMode(mode: (typeof ACCEPTS)[number]) {
+  writeMode(KEY, mode);
+}
 
 export function usePermissions(): Permissions {
   const reviewer = useReviewerMode();
-  // Always false on the server so the first client render matches the HTML.
-  const [reader, setReader] = useState(false);
-
-  useEffect(() => {
-    const q = new URLSearchParams(window.location.search).get("access");
-    if (q === "reader" || q === "full") localStorage.setItem(KEY, q);
-    try {
-      setReader(localStorage.getItem(KEY) === "reader");
-    } catch {
-      setReader(false);
-    }
-  }, []);
-
+  // Unset reads as full access, which is also the server-render default.
+  const reader = useStoredMode(KEY, "access", ACCEPTS) === "reader";
   return { canEdit: reviewer, canPublish: reviewer, canViewPII: reviewer || !reader };
 }

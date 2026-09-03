@@ -4,17 +4,29 @@ import { useRouter } from "next/navigation";
 import type { Graph } from "@triplane/engine";
 import { loadGraph } from "./WebMCPProvider";
 import { humanizeType } from "../lib/display";
+import { shellDestinations } from "../lib/destinations";
 
 /**
- * ⌘K search over concepts, owners and columns.
+ * ⌘K search over concepts, owners and columns — and over the shell's own destinations,
+ * so the sandbox and the plane-3 artifacts are reachable from the keyboard as well as
+ * from the sidebar. Both read the same list; neither can drift from the other.
  *
  * Searches graph.json, which the shell already has — no endpoint, no index to keep in
  * step with the bundle. Matching on the column names inside a table's frontmatter is
  * what makes "home_region" findable, which is how people actually look for a table.
  */
-interface Hit { id: string; title: string; type: string; why?: string }
+interface Hit {
+  id: string;
+  title: string;
+  type: string;
+  why?: string;
+  /** Set for a shell destination; concepts route to /c/<id>. */
+  href?: string;
+  /** A build artifact, not a route: hand it to the browser rather than to the router. */
+  external?: boolean;
+}
 
-export function CommandPalette() {
+export function CommandPalette({ landing }: { landing: boolean }) {
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
   const [nodes, setNodes] = useState<Graph["nodes"]>([]);
@@ -57,6 +69,22 @@ export function CommandPalette() {
   const hits = useMemo<Hit[]>(() => {
     const needle = q.trim().toLowerCase();
     const scored: (Hit & { score: number })[] = [];
+
+    // Destinations first: the palette is where someone looks when they don't know what
+    // the app has, so it should answer that. On an empty query only the views are listed —
+    // the four machine artifacts would push concepts out of a 12-row list for no one's
+    // benefit, and anyone after those is searching for them by name.
+    const { views, machine } = shellDestinations(landing);
+    for (const d of needle ? [...views, ...machine] : views) {
+      const label = d.label.toLowerCase();
+      if (needle && !label.includes(needle) && !d.href.toLowerCase().includes(needle)) continue;
+      scored.push({
+        id: d.id, title: d.label, type: "destination", why: d.note ?? "go to",
+        href: d.href, external: d.external,
+        score: !needle || label.startsWith(needle) ? 4 : 3.5
+      });
+    }
+
     for (const n of nodes) {
       const fm = n.frontmatter as any;
       const base = { id: n.id, title: n.title, type: n.type };
@@ -74,13 +102,14 @@ export function CommandPalette() {
       else if (column) scored.push({ ...base, score: 1, why: `column ${column.name}` });
     }
     return scored.sort((a, b) => b.score - a.score || a.title.localeCompare(b.title)).slice(0, 12);
-  }, [q, nodes]);
+  }, [q, nodes, landing]);
 
   const go = useCallback(
     (h?: Hit) => {
       if (!h) return;
       setOpen(false);
-      router.push(`/c/${h.id}`);
+      if (h.external) window.location.href = h.href!;
+      else router.push(h.href ?? `/c/${h.id}`);
     },
     [router]
   );
@@ -102,8 +131,8 @@ export function CommandPalette() {
             if (e.key === "ArrowUp") { e.preventDefault(); setActive((i) => Math.max(i - 1, 0)); }
             if (e.key === "Enter") { e.preventDefault(); go(hits[active]); }
           }}
-          placeholder="Search concepts, owners, columns…"
-          aria-label="Search concepts, owners, columns"
+          placeholder="Search concepts, owners, columns, or go to…"
+          aria-label="Search concepts, owners, columns, or go to a view"
         />
         <div className="palette-list">
           {failed && <div className="palette-empty">The concept index could not be loaded.</div>}
@@ -126,7 +155,7 @@ export function CommandPalette() {
         </div>
         <div className="palette-foot">
           <span>↑↓ to move · ↵ to open · esc to close</span>
-          <span style={{ marginLeft: "auto" }}>{hits.length} of {nodes.length}</span>
+          <span style={{ marginLeft: "auto" }}>{hits.length} shown</span>
         </div>
       </div>
     </div>

@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useStoredMode, writeMode } from "./mode";
 
 /**
  * Reviewer mode is a toggle, not an account: `?reviewer=1` turns it on for this browser,
@@ -8,16 +8,14 @@ import { useEffect, useState } from "react";
  * runs through /api/govern and a human's click. Real auth is a post-hackathon concern.
  */
 const KEY = "triplane.reviewer";
+const ACCEPTS = ["0", "1"] as const;
+
+/** Flip the mode in place, for a control on the page the mode is being read on. */
+export function setReviewerMode(on: boolean) {
+  writeMode(KEY, on ? "1" : "0");
+}
 
 export function useReviewerMode(): boolean {
-  // Always false on the server so the first client render matches the HTML.
-  const [on, setOn] = useState(false);
-
-  useEffect(() => {
-    const q = new URLSearchParams(window.location.search).get("reviewer");
-    if (q === "1" || q === "0") localStorage.setItem(KEY, q);
-    setOn(localStorage.getItem(KEY) === "1");
-  }, []);
-
-  return on;
+  // Off until the store has been read, so the first client render matches the HTML.
+  return useStoredMode(KEY, "reviewer", ACCEPTS) === "1";
 }

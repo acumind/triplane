@@ -113,7 +113,17 @@ for entry in "${PROJECTS[@]}"; do
   set_env "$name" TRIPLANE_REPO "acumind/triplane"
 
   # Connect the repo so a merge redeploys — that is what makes approval the deploy.
-  $V git connect --yes >/dev/null 2>&1 || echo "    (git already connected)"
+  # Do NOT swallow this: a failure here is silent everywhere else. The project still
+  # deploys from the CLI, so nothing looks wrong until an approved proposal merges and
+  # never appears on the site. The usual cause is Vercel's GitHub authorisation having
+  # expired, which no token here can repair — it needs Vercel → Settings → Git.
+  if ! out=$($V git connect --yes 2>&1); then
+    case "$out" in
+      *"already connected"*) echo "    (git already connected)" ;;
+      *) echo "    ✗ git NOT connected — approvals will merge but never deploy:"
+         echo "$out" | tail -3 | sed 's/^/      /' ;;
+    esac
+  fi
   $V deploy --prod
 done
 

@@ -9,7 +9,7 @@ See `docs/triplane-tasks.md` for the full record, including every defect fixed (
 
 **Verified working:**
 - `npm run typecheck && npm run greptest && npx tsx scripts/smoke.mts` — 67 smoke checks covering the tool contract, MCP round-trip, plane-3 exposure, proposal linting, the write-plane round-trip, WebMCP descriptor/execute shapes, and graph traversal
-- `npm run build:meridian` (12 concepts, 37 edges, hash `09bbb9288056`) and `npm run build:docs` (6 concepts) — both emit `graph.json`, `.well-known/ai-catalog.json`, `llms.txt` and `bundle/` into `apps/web/public/`
+- `npm run build:meridian` (13 concepts, 45 edges, hash `00fb509fb3f2` — 13th concept arrived through the write plane, PR #5) and `npm run build:docs` (6 concepts) — both emit `graph.json`, `.well-known/ai-catalog.json`, `llms.txt` and `bundle/` into `apps/web/public/`
 - `npm run build --workspace apps/web` — 8 routes, **zero warnings**
 - The sidebar agent answers end to end and cites concept ids; `ard-agent.ts` completes the full ARD loop citing the same ids; a proposal round-trips through `/govern` and lands on all three planes
 
@@ -19,12 +19,17 @@ threads, trace, flag) and the no-access state. Permissions are stubbed on query 
 `?reviewer=1` grants edit/publish, `?access=reader` revokes canViewPII.
 
 **Live on Vercel:** four deployments off one repo and one engine, differing only by
-`TRIPLANE_BUNDLE` — [meridian](https://triplane-meridian.vercel.app) `864b8d1bfab2`,
+`TRIPLANE_BUNDLE` — [meridian](https://triplane-meridian.vercel.app) `00fb509fb3f2`,
 [docs](https://triplane-docs.vercel.app) `d2e60f8d5d7f`,
 [controls](https://triplane-controls.vercel.app) `300eaccc0e0e`,
 [dhruva](https://triplane-dhruva.vercel.app) `733e60062106`. All four serve plane 3, run the
 write plane on the GitHub store, and list each other in the switcher. Runbook and the
 settings Vercel hides from the CLI: `docs/deploy.md`. Re-run with `scripts/setup-vercel.sh`.
+
+All four are now **connected to `acumind/triplane@main`**, so a push — and therefore an
+approved proposal — redeploys them without anyone touching the CLI. That was broken until
+2026-09-03 (D19): the projects had no Git link, so approvals merged and nothing ever
+rebuilt. If approvals stop appearing on the sites, check the link first.
 
 **Not yet done:** the origin trial (T6) and the demo rehearsal (T7).
 

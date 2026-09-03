@@ -134,9 +134,9 @@ export function ConceptToolbar({
         onClick={() =>
           reviewer
             ? emitAsk(`Draft a change to ${conceptId} (${title}) that `)
-            : router.push("/govern")
+            : router.push(`/govern?intent=change&for=${conceptId}`)
         }
-        data-tip={reviewer ? "Draft a change for review" : "Opens the review queue"}
+        data-tip={reviewer ? "Draft a change for review" : "How a change gets made"}
       >
         Propose change
       </button>

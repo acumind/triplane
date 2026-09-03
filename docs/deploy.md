@@ -27,6 +27,29 @@ command it runs, which would print it into any captured log.
   serverless functions. 72 KB per deployment.
 - Plane 3 sends CORS, so a browser-based agent can actually perform ARD discovery.
 
+## The Git connection is the one thing a token cannot fix
+
+**Status: connected.** All four projects link to `acumind/triplane@main`, so a push
+redeploys them and an approved proposal reaches the sites on its own. What follows is how
+it broke and how to tell if it breaks again.
+
+`vercel git connect` (and `POST /v9/projects/<name>/link`) both fail with
+`repo_not_found` when Vercel's **account-level GitHub authorisation** has expired — the
+API then answers `git-namespaces` with a GitHub `401 Bad credentials`. A `VERCEL_TOKEN`
+cannot repair that; reconnecting is an OAuth flow in the browser:
+
+**Vercel → Settings → Git → GitHub → Connect** (or reinstall the Vercel GitHub App on
+`acumind/triplane`), then re-run `bash scripts/setup-vercel.sh`.
+
+Why it matters more than it looks: with no Git connection every deploy is `source=cli`, so
+an approved proposal merges into `main` and **nothing rebuilds**. `/govern` now says so
+after an approval instead of going quiet, but the deployment is still stale until someone
+pushes one by hand. Check with:
+
+```bash
+curl -s https://triplane-meridian.vercel.app/graph.json | python3 -c 'import json,sys; g=json.load(sys.stdin); print(g["bundleHash"], len(g["nodes"]), g["builtAt"])'
+```
+
 ## Two project settings that are not reachable from the CLI
 
 Both blocked the first deploys, and both are PATCHed by the script via

@@ -106,7 +106,8 @@ they never leave the browser. That asymmetry is the security story, and it is a 
 not a promise.
 
 ### 6 · Approval is the deploy (45s) — the write plane
-1. `:3000/?reviewer=1` — reviewer mode on.
+1. Sidebar → **Viewing as reader** → **Reviewer mode**. (`:3000/?reviewer=1` still works
+   and is the faster keystroke if you are already typing a URL.)
 2. Ask: **"Draft a concept for retention rate, the inverse of churn rate, and propose it at
    metrics/retention-rate.md"**
 3. While it drafts, open `:3000/c/retention-rate` in a second tab → **404**. The agent
@@ -145,16 +146,16 @@ is the docs for the engine — also a Triplane instance.
 
 ## Optional extensions
 
-**Restricted concepts (20s)** — `:3003/c/pricing-and-availability?access=reader` is the
-better subject: a commerce bundle whose *pricing* is withheld needs no explanation, and that
-concept exists precisely to say live prices are not in the bundle. `:3002/c/revenue-cutoff?access=reader`
-works the same way. A Confidential
+**Restricted concepts (20s)** — sidebar → **Viewing as reader** → **Hide restricted**, then
+open `:3003/c/pricing-and-availability`. That is the better subject: a commerce bundle whose
+*pricing* is withheld needs no explanation, and the concept exists precisely to say live
+prices are not in the bundle. `:3002/c/revenue-cutoff` works the same way. A Confidential
 control: the tree shows a lock, the title, owner and lineage stay visible, the contents are
-withheld behind **Request access**. You can see that it exists and who to ask. `?access=full`
-restores it.
+withheld behind **Request access**. You can see that it exists and who to ask. The same menu
+item switches it back. (`?access=reader` / `?access=full` still work from the URL.)
 
-**Bring your own bundle (30s)** — `/sandbox` on any instance. Drop in `.md` files, or hit
-"Use an example". The same compiler that runs the build produces the graph, the tool
+**Bring your own bundle (30s)** — sidebar → **Sandbox**, on any instance. Drop in `.md`
+files, or hit "Use an example". The same compiler that runs the build produces the graph, the tool
 contract, and the catalog the bundle would publish. Nothing is written or deployed.
 
 **WebMCP DevTools (20s)** — **not verified by us.** Headless Chrome has no `modelContext`,
@@ -172,7 +173,7 @@ DevTools panel, invoke `get_join_path` by hand, and show `compare_metrics` prese
 | A page renders "The compiled bundle is missing" | No `public/graph.json`. Run `npm run build:meridian`. |
 | `:3001` or `:3002` looks like an older build | A worktree is pinned to the commit it was made from. Re-run its `second-instance.sh` command; it checks out HEAD. |
 | A deployment shows "unreachable" in the switcher | That instance is down, **or** it is serving a build older than the CORS fix. Re-run its `second-instance.sh` command. |
-| The agent answers but the graph stays dark | You are on a concept page. The graph lives on `/` and `/concepts`. |
+| The agent answers but the graph stays dark | You are on a concept page. Sidebar → **Concept index** for the graph. |
 | Governance approve fails | The local store shells out to the build. Check the terminal running `:3000` for the lint error. |
 
 **The safe fallback if the live agent fails:** beats 1, 2, 5, 6 and 7 need no model at all.

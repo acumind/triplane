@@ -183,6 +183,8 @@ code { font-family: var(--mono); font-size: 12.5px; background: var(--fill); pad
   position: absolute; top: calc(100% + 4px); z-index: 20; background: var(--ground);
   border: 1px solid var(--line-control); border-radius: 6px; padding: 4px; display: flex; flex-direction: column;
 }
+/* The sidebar sets overflow:hidden, so a menu anchored near its bottom opens upward. */
+.menu[data-drop="up"] { top: auto; bottom: calc(100% + 4px); }
 .menu-item {
   display: flex; align-items: center; gap: 8px; width: 100%; text-align: left; background: transparent;
   border: 0; padding: 6px 8px; border-radius: 6px; cursor: pointer; font-size: 13px; color: var(--ink); text-decoration: none;

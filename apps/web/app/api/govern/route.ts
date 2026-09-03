@@ -78,8 +78,15 @@ export async function POST(req: Request) {
       if (!body.id) return fail("approve needs a proposal id.", 400);
       await store.approve(String(body.id));
       if (!rebuildsLocally) {
-        // GitHub backend: the merge is the deploy — CI rebuilds and redeploys.
-        return NextResponse.json({ approved: String(body.id), rebuilt: false });
+        // GitHub backend: the merge lands the file, and the site changes only when the
+        // deployment rebuilds from that commit. Whether anything triggers that rebuild is
+        // a deployment fact this process cannot see, so report the merge and let the page
+        // say plainly that nothing has moved yet — silence here reads as "published".
+        return NextResponse.json({
+          approved: String(body.id),
+          rebuilt: false,
+          base: config.store.kind === "github" ? config.store.base : ""
+        });
       }
       const { stdout } = await run("npx", ["tsx", "packages/cli/src/build.ts", config.bundle], {
         cwd: repoRoot(),
