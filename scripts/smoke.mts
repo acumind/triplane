@@ -1,7 +1,7 @@
 import { mkdtempSync, mkdirSync, writeFileSync, existsSync, readFileSync, readdirSync, statSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { compileBundle, compileFiles, buildTools, createMcpHandler, buildAiCatalog, fsStore, validateProposal, shortestPath, upstream } from "@triplane/engine/server";
+import { compileBundle, compileFiles, buildTools, createMcpHandler, buildAiCatalog, fsStore, githubStore, validateProposal, shortestPath, upstream } from "@triplane/engine/server";
 import { listPageTools, executePageTool, registerWebmcpTools, PageToolUnavailable } from "@triplane/engine";
 import { pageTypeFor, sampleQuestion } from "../apps/web/lib/page";
 import { conceptView, isRestricted, statusLine } from "../apps/web/lib/concept";
@@ -264,6 +264,74 @@ console.log("\n— compileFiles (no filesystem):");
   check("a duplicate id is an error", msgs.includes("duplicate id"));
   check("an orphan warns rather than fails", bad.issues.some((i) => i.level === "warn" && i.message.includes("orphan node: lonely")));
   check("a duplicate id no longer crashes the compiler", bad.graph.nodes.length === 4);
+}
+
+// The GitHub store is the ONLY store that works in production — a serverless filesystem is
+// read-only and the fs path does not exist there. It had never executed once. These stub
+// fetch and assert the REQUESTS it makes, which is what catches a wrong request body.
+console.log("\n— github store (stubbed transport):");
+{
+  const realFetch = globalThis.fetch;
+  const calls: { method: string; url: string; body: any; headers: any }[] = [];
+  const route = (url: string, method: string): any => {
+    if (/\/contents\/.*missing\.md/.test(url) && method === "GET") return { status: 404, body: { message: "Not Found" } };
+    if (/\/contents\//.test(url) && method === "GET") return { status: 200, body: { sha: "blob-sha-1", content: Buffer.from("hi").toString("base64") } };
+    if (/\/contents\//.test(url)) return { status: 200, body: {} };
+    if (/\/git\/ref\//.test(url)) return { status: 200, body: { object: { sha: "base-sha" } } };
+    if (/\/git\/refs/.test(url)) return { status: 201, body: {} };
+    if (/\/pulls\/\d+\/files/.test(url)) {
+      const n = url.match(/pulls\/(\d+)/)![1];
+      return { status: 200, body: n === "1"
+        ? [{ filename: "bundles/meridian/metrics/x.md" }]
+        : [{ filename: "bundles/dhruva/products/y.md" }] };
+    }
+    if (/\/pulls\?/.test(url)) return { status: 200, body: [
+      { number: 1, head: { ref: "proposal/aaa" }, html_url: "u1", title: "mine", created_at: "t" },
+      { number: 2, head: { ref: "proposal/bbb" }, html_url: "u2", title: "another bundle", created_at: "t" },
+      { number: 3, head: { ref: "feature/x" }, html_url: "u3", title: "not a proposal", created_at: "t" }
+    ] };
+    if (/\/pulls$/.test(url)) return { status: 201, body: { number: 7, html_url: "pr-url", created_at: "t" } };
+    if (/\/trees\//.test(url)) return { status: 200, body: { tree: [
+      { type: "blob", path: "README.md" },
+      { type: "blob", path: "docs/notes.md" },
+      { type: "blob", path: "bundles/meridian/metrics/churn.md" },
+      { type: "blob", path: "bundles/dhruva/products/mg.md" }
+    ] } };
+    return { status: 200, body: {} };
+  };
+  (globalThis as any).fetch = async (url: string, init: any = {}) => {
+    const method = init.method ?? "GET";
+    calls.push({ method, url: String(url), body: init.body ? JSON.parse(init.body) : undefined, headers: init.headers ?? {} });
+    const r = route(String(url), method);
+    return new Response(JSON.stringify(r.body), { status: r.status, headers: { "content-type": "application/json" } });
+  };
+
+  try {
+    const store = githubStore("acumind/triplane", "main", "bundles/meridian");
+
+    check("list() returns only this bundle, bundle-relative",
+      (await store.list()).join() === "metrics/churn.md");
+
+    calls.length = 0;
+    await store.propose({ path: "metrics/churn.md", content: "x", message: "edit" });
+    const put = calls.find((c) => c.method === "PUT")!;
+    check("propose() sends the blob sha when the file exists", put?.body?.sha === "blob-sha-1");
+    check("propose() writes under the bundle root", put?.url.includes("/contents/bundles/meridian/metrics/churn.md"));
+
+    calls.length = 0;
+    await store.propose({ path: "metrics/missing.md", content: "x", message: "new" });
+    check("propose() omits sha for a new file", !("sha" in (calls.find((c) => c.method === "PUT")!.body ?? {})));
+
+    const queue = await store.listProposals();
+    check("listProposals() keeps proposals touching this bundle", queue.length === 1 && queue[0].id === "1");
+    check("listProposals() drops another bundle's proposal", !queue.some((p) => p.id === "2"));
+    check("listProposals() ignores non-proposal branches", !queue.some((p) => p.id === "3"));
+    check("listProposals() reports bundle-relative paths", queue[0].paths?.join() === "metrics/x.md");
+
+    check("every request carries a user-agent", calls.length > 0 && calls.every((c) => Boolean(c.headers["user-agent"])));
+  } finally {
+    globalThis.fetch = realFetch;
+  }
 }
 
 // The concept view model. It reads free-form OKF frontmatter, so the contract that matters

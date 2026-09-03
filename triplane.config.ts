@@ -13,6 +13,15 @@ const isControls = selected === "controls";
 const isDhruva = selected === "dhruva";
 const bundle = `bundles/${selected === "meridian" ? "meridian" : selected}`;
 
+/**
+ * What the catalog and llms.txt advertise. Baked at build time, but the URL is not known
+ * until the first deploy — so fall back to the host's own idea of where it lives. Vercel
+ * sets these during the build, which means previews advertise themselves correctly too,
+ * with nothing to remember.
+ */
+const vercelOrigin = process.env.VERCEL_PROJECT_PRODUCTION_URL ?? process.env.VERCEL_URL;
+const selfOrigin = vercelOrigin ? `https://${vercelOrigin}` : undefined;
+
 const config: TriplaneConfig = {
   bundle,
   brand: {
@@ -46,24 +55,24 @@ const config: TriplaneConfig = {
   publisher: isDocs
     ? {
         name: "Triplane",
-        domain: process.env.TRIPLANE_DOMAIN ?? "triplane.example.com",
+        domain: process.env.TRIPLANE_DOMAIN ?? selfOrigin ?? "triplane.example.com",
         contact: "hello@triplane.example.com"
       }
     : isDhruva
     ? {
         name: "Dhruva Appliances (demo)",
-        domain: process.env.TRIPLANE_DOMAIN ?? "dhruva.example.com",
+        domain: process.env.TRIPLANE_DOMAIN ?? selfOrigin ?? "dhruva.example.com",
         contact: "care@dhruva.example.com"
       }
     : isControls
     ? {
         name: "Northwind Financial (demo)",
-        domain: process.env.TRIPLANE_DOMAIN ?? "controls.example.com",
+        domain: process.env.TRIPLANE_DOMAIN ?? selfOrigin ?? "controls.example.com",
         contact: "assurance@northwind.example.com"
       }
     : {
         name: "Meridian Retail (demo)",
-        domain: process.env.TRIPLANE_DOMAIN ?? "meridian.example.com",
+        domain: process.env.TRIPLANE_DOMAIN ?? selfOrigin ?? "meridian.example.com",
         contact: "knowledge@meridian.example.com"
       },
   planes: {

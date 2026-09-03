@@ -9,6 +9,7 @@
     "apps/*"
   ],
   "scripts": {
+    "build:bundle": "tsx packages/cli/src/build.ts bundles/${TRIPLANE_BUNDLE:-meridian}",
     "build:meridian": "tsx packages/cli/src/build.ts bundles/meridian",
     "build:docs": "TRIPLANE_BUNDLE=triplane-docs tsx packages/cli/src/build.ts bundles/triplane-docs",
     "build:controls": "TRIPLANE_BUNDLE=controls tsx packages/cli/src/build.ts bundles/controls",
