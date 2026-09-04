@@ -53,4 +53,4 @@ docs/               full spec + personas
 CLAUDE.md           build state, guardrails, task list
 ```
 
-Built for a WebMCP hackathon. MIT.
+Built for a WebMCP hackathon. Licensed under the Apache License, Version 2.0.
