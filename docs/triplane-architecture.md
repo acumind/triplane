@@ -144,9 +144,9 @@ Abort semantics: one `AbortController` per question, threaded through fetch and 
 
 ### Plane 3 — ecosystem
 
-Three read surfaces generated from the same build: `/.well-known/ai-catalog.json` (ARD-pattern manifest: publisher identity, `bundleHash`, capability list), `llms.txt` (the low-tech pointer), and `/api/bundle` (raw OKF listing and file fetch, path-traversal-guarded). Plus one live surface: `/api/mcp`, a stateless JSON-RPC handler implementing `initialize`, `tools/list`, and `tools/call` over the read-only tool subset. Statelessness is load-bearing — each POST rebuilds context from `graph.json`, so the endpoint scales as pure serverless functions with zero session affinity and nothing to replay after a cold start. The official MCP SDK's Streamable HTTP transport replaces the hand-rolled handler when session features (resumability, notifications) are needed; the swap is confined to `adapters/mcp.ts` and the route.
+Three read surfaces generated from the same build: `/.well-known/ai-catalog.json` (ARD-pattern manifest: publisher identity, `bundleHash`, capability list), `llms.txt` (the low-tech pointer), and `/api/bundle` (raw OKF listing and file fetch, path-traversal-guarded). Plus one live surface: `/api/mcp`, a stateless JSON-RPC handler implementing `initialize`, `tools/list`, and `tools/call` over the read-only tool subset. Statelessness is load-bearing — each POST rebuilds context from `graph.json`, so the endpoint scales as pure serverless functions with zero session affinity and nothing to replay after a cold start. It implements the POST half of Streamable HTTP and no more: no `Mcp-Session-Id` is issued and `GET` returns 405, declining the optional server→client stream. Both are choices the spec grants, which is why the catalog's `transport: "streamable-http"` claim holds — verified against real clients. The official MCP SDK replaces the hand-rolled handler when session features (resumability, notifications) are needed; the swap is confined to `adapters/mcp.ts` and the route.
 
-External consumption paths, in increasing intimacy: read `llms.txt`; fetch the catalog; fetch raw OKF; connect over MCP (desktop clients via custom-connector URL, coding agents via a committed `.mcp.json`); and for coding agents, clone the repo and open a PR — which enters the governance flow like any other proposal.
+External consumption paths, in increasing intimacy: read `llms.txt`; fetch the catalog; fetch raw OKF; connect over MCP (desktop clients via custom-connector URL, coding agents via a committed `.mcp.json`, or **any host at all via the ARD plugin in `plugins/triplane-ard`, which starts from a bare domain rather than a known endpoint**); and for coding agents, clone the repo and open a PR — which enters the governance flow like any other proposal.
 
 ## 6. Tool contract and transport exposure
 
@@ -158,7 +158,7 @@ Defined once in `tools.ts`, mounted per transport by `kind`. This matrix is the 
 | `get_concept` | read | global | ✓ | ✓ |
 | `get_join_path` | read | global | ✓ | ✓ |
 | `explain_metric` | read | global | ✓ | ✓ |
-| `compare_metrics` | read | metric pages | ✓ (scoped) | ✓ |
+| `compare_metrics` | read | metric pages | ✓ (scoped) | ✗ (scope is not global) |
 | `open_concept` | ui | global | ✓ | ✗ |
 | `highlight_subgraph` | ui | global | ✓ | ✗ |
 | `propose_concept` | write | global | ✓ (reviewer mode) | ✗ |

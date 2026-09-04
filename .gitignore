@@ -16,3 +16,6 @@ apps/web/public/bundle/
 .DS_Store
 .env.vercel
 .vercel
+
+# Demo script — a rehearsal aid, not part of the codebase. Stays on disk, out of the repo.
+docs/demo-script.md

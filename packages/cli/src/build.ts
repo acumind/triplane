@@ -7,6 +7,7 @@
 import { cpSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { compileBundle, buildTools, buildAiCatalog, buildLlmsTxt } from "@triplane/engine/server";
+import { validateAiCatalog } from "@triplane/ard";
 import * as cfgMod from "../../../triplane.config.js";
 const config = ((cfgMod as any).default?.default ?? (cfgMod as any).default ?? cfgMod) as import("@triplane/engine").TriplaneConfig;
 
@@ -41,8 +42,19 @@ for (const n of graph.nodes) {
   cpSync(join(bundleDir, n.path), dest);
 }
 
+// Validate with the SAME code a stranger's discovery client runs against us. Publishing a
+// catalog we would ourselves refuse to consume is the failure mode worth catching here.
+const catalog = buildAiCatalog(config, graph, buildTools());
+const check = validateAiCatalog(catalog);
+for (const w of check.warnings) console.log(`  △ catalog: ${w}`);
+if (check.errors.length) {
+  for (const e of check.errors) console.error(`  ✗ catalog: ${e}`);
+  console.error("✗ build failed — the ai-catalog.json this would publish is invalid.");
+  process.exit(1);
+}
+
 writeFileSync(join(outDir, "graph.json"), JSON.stringify(graph));
-writeFileSync(join(outDir, ".well-known", "ai-catalog.json"), JSON.stringify(buildAiCatalog(config, graph, buildTools()), null, 2));
+writeFileSync(join(outDir, ".well-known", "ai-catalog.json"), JSON.stringify(catalog, null, 2));
 writeFileSync(join(outDir, "llms.txt"), buildLlmsTxt(config));
 
 console.log(`  ✓ ${graph.nodes.length} concepts, ${graph.edges.length} edges (hash ${graph.bundleHash})`);

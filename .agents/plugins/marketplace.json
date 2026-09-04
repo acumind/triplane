@@ -1,0 +1,12 @@
+{
+  "name": "triplane",
+  "interface": { "displayName": "Triplane" },
+  "plugins": [
+    {
+      "name": "triplane-ard",
+      "source": { "source": "local", "path": "./plugins/triplane-ard" },
+      "policy": { "installation": "AVAILABLE", "authentication": "ON_INSTALL" },
+      "category": "Developer Tools"
+    }
+  ]
+}

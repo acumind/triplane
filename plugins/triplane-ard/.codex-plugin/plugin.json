@@ -1,0 +1,29 @@
+{
+  "name": "triplane-ard",
+  "version": "0.1.0",
+  "description": "Agentic Resource Discovery for any ARD-enabled origin.",
+  "author": { "name": "Triplane" },
+  "skills": "./skills/",
+  "mcpServers": {
+    "ard": {
+      "command": "node",
+      "args": ["./bin/ard-mcp.mjs"],
+      "cwd": ".",
+      "startup_timeout_sec": 30,
+      "env_vars": ["TRIPLANE_ARD_NODE", "HTTPS_PROXY", "HTTP_PROXY", "NO_PROXY"]
+    }
+  },
+  "interface": {
+    "displayName": "ARD Discovery",
+    "shortDescription": "Discover and use any ARD-enabled site from a bare domain",
+    "longDescription": "Finds /.well-known/ai-catalog.json (falling back to llms.txt), validates the catalog, checks the publisher against the host that actually served it, reads the capability list, and connects to the endpoint the catalog names. Reports what that check does and does not prove, and refuses when it fails.",
+    "developerName": "Triplane",
+    "category": "Developer Tools",
+    "capabilities": ["Read"],
+    "defaultPrompt": [
+      "Discover example.com with ARD and list its capabilities.",
+      "Using ARD, answer from that site and cite the ids it returns.",
+      "Which ARD sites have I discovered this session?"
+    ]
+  }
+}

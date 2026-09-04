@@ -1,0 +1,15 @@
+{
+  "name": "triplane-ard",
+  "displayName": "ARD Discovery",
+  "version": "0.1.0",
+  "description": "Give it a bare domain. It finds the site's AI catalog, checks the publisher against the host that served it, reads the advertised capabilities, and connects to whatever endpoint the catalog names.",
+  "author": { "name": "Triplane" },
+  "license": "MIT",
+  "keywords": ["ard", "mcp", "discovery", "agentic-web", "llms-txt", "well-known"],
+  "mcpServers": {
+    "ard": {
+      "command": "node",
+      "args": ["${CLAUDE_PLUGIN_ROOT}/bin/ard-mcp.mjs"]
+    }
+  }
+}

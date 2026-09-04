@@ -1,0 +1,12 @@
+{
+  "name": "@triplane/ard",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Agentic Resource Discovery client: given a bare domain, find the catalog, check the publisher, read capabilities, connect.",
+  "main": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {}
+}

@@ -3,7 +3,10 @@ import type { Graph, ToolDef, TriplaneConfig } from "./types";
 /**
  * Plane 3 artifacts. ai-catalog.json shape follows the ARD pattern:
  * publisher-hosted manifest at /.well-known/ai-catalog.json describing capabilities.
- * TODO(spec): validate against the published ard-spec schema before final deploy.
+ *
+ * The shape is validated at build time by `validateAiCatalog` in @triplane/ard — the same
+ * function a stranger's discovery client runs against this file. The engine stays a pure
+ * producer: the format belongs to the spec, not to us.
  */
 /**
  * The publisher domain doubles as the deployed origin. Accept it either way:

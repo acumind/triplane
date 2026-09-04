@@ -8,7 +8,7 @@ Phase A is complete: the engine, CLI, web app, agent loop and governance console
 See `docs/triplane-tasks.md` for the full record, including every defect fixed (D1–D16).
 
 **Verified working:**
-- `npm run typecheck && npm run greptest && npx tsx scripts/smoke.mts` — 67 smoke checks covering the tool contract, MCP round-trip, plane-3 exposure, proposal linting, the write-plane round-trip, WebMCP descriptor/execute shapes, and graph traversal
+- `npm run typecheck && npm run greptest && npx tsx scripts/smoke.mts` — 219 smoke checks covering the tool contract, MCP round-trip, plane-3 exposure, proposal linting, the write-plane round-trip, WebMCP descriptor/execute shapes, graph traversal, and the ARD client (discovery, trust refusals, catalog validation, redirect walking, stdio framing, the SSRF regression, and the two independent gates that keep write tools unreachable)
 - `npm run build:meridian` (13 concepts, 45 edges, hash `00fb509fb3f2` — 13th concept arrived through the write plane, PR #5) and `npm run build:docs` (6 concepts) — both emit `graph.json`, `.well-known/ai-catalog.json`, `llms.txt` and `bundle/` into `apps/web/public/`
 - `npm run build --workspace apps/web` — 8 routes, **zero warnings**
 - The sidebar agent answers end to end and cites concept ids; `ard-agent.ts` completes the full ARD loop citing the same ids; a proposal round-trips through `/govern` and lands on all three planes
@@ -31,7 +31,14 @@ approved proposal — redeploys them without anyone touching the CLI. That was b
 2026-09-03 (D19): the projects had no Git link, so approvals merged and nothing ever
 rebuilt. If approvals stop appearing on the sites, check the link first.
 
-**Not yet done:** the origin trial (T6) and the demo rehearsal (T7).
+**ARD in third-party agent hosts:** `plugins/triplane-ard/` is one directory that is
+simultaneously an npm workspace package, a **Claude Code plugin** and a **Codex plugin**. It
+turns a bare domain into a checked connection — no endpoint pasted into a config file, which
+is the part that made the old CLI-only demo weak. Zero runtime dependencies and no imports
+from this repo, so it runs standalone from a copied-out plugin directory. See its README.
+
+**Not yet done:** the origin trial (T6) and the demo rehearsal (T7) — deprioritised behind
+the plugin work.
 
 ## Commands
 
@@ -43,6 +50,8 @@ npm run typecheck && npm run greptest
 npx tsx scripts/smoke.mts        # engine smoke test
 npm run web                      # next dev (after T1)
 npx tsx packages/cli/src/ard-agent.ts http://localhost:3000 "How is WAU computed?"   # needs ANTHROPIC_API_KEY
+npm run ard -- discover <domain>  # ARD discovery, no agent host and no API key needed
+claude --plugin-dir ./plugins/triplane-ard   # the same discovery inside Claude Code
 npm run instance:docs            # second instance: docs bundle on :3001, alongside :3000
 ```
 
@@ -100,6 +109,16 @@ Restart `npm run web` after editing `.env.local`; it is read at startup, not on 
    That is demo beat 2's whole payoff and needs to read across a room — decided 2026-09-03, keep it. No shadows, no gradients, no all-caps. Tokens in `app/globals.css`; match the handoff's values rather than inventing new ones.
    *This replaced an earlier "ink-on-paper, serif body, accent-for-agent-activity" rule.* `brand.accent` is consequently no longer used in the UI — deployments now differ by brand name and bundle, not colour. Don't "restore" the old rule; if the accent should return, decide that deliberately.
 7. Model id everywhere: `claude-sonnet-4-6`.
+8. **`plugins/triplane-ard` keeps zero runtime dependencies and imports nothing from this repo.**
+   Both halves are load-bearing: standalone launch works because `node` can run the sources
+   with no `node_modules`, and a discovery client that shared code with the sites it
+   discovers would be assuming its own answer. `scripts/smoke.mts` asserts the empty
+   `dependencies`.
+9. **No `ard_*` tool ever accepts an endpoint argument.** Endpoints come only from a catalog
+   that passed its trust checks; otherwise the plugin is a "POST anywhere" primitive with a
+   friendly name. `ard_call` also forwards only tools the remote currently lists, which is a
+   second gate independent of the server's own `kind`/`scope` filter — that is what stops a
+   proxy becoming the way around guardrail 4.
 
 ## Tasks
 

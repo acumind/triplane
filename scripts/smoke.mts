@@ -3,6 +3,13 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { compileBundle, compileFiles, buildTools, createMcpHandler, buildAiCatalog, fsStore, githubStore, validateProposal, shortestPath, upstream } from "@triplane/engine/server";
 import { listPageTools, executePageTool, registerWebmcpTools, PageToolUnavailable } from "@triplane/engine";
+import { discover, validateAiCatalog, normalizeDomain, parseLlmsTxt, extractJsonRpc, ArdError, isPrivateHost, fetchText, McpHttpClient } from "@triplane/ard";
+import { handleRpc } from "../plugins/triplane-ard/src/mcp-stdio.ts";
+import { runTool, TOOL_DEFS } from "../plugins/triplane-ard/src/proxy-tools.ts";
+import { SiteRegistry } from "../plugins/triplane-ard/src/registry.ts";
+import { encodeLine, LineDecoder } from "../plugins/triplane-ard/src/stdio-codec.ts";
+import { renderDiscovery } from "../plugins/triplane-ard/src/render.ts";
+import { parseArgv } from "../plugins/triplane-ard/src/argv.ts";
 import { pageTypeFor, sampleQuestion } from "../apps/web/lib/page";
 import { conceptView, isRestricted, statusLine } from "../apps/web/lib/concept";
 import { humanizeType, pluralizeType } from "../apps/web/lib/display";
@@ -446,5 +453,463 @@ check("rejected proposal leaves the queue", (await store.listProposals()).length
 check("rejected file never lands in the bundle", !existsSync(join(dir, "metrics", "bad.md")));
 rmSync(dir, { recursive: true, force: true });
 
+
+// ---------------------------------------------------------------------------------------
+// ARD client. Network-free: every block drives a stubbed fetch, so these assert the
+// DECISIONS (what is refused, and why) rather than that a live site happens to be up.
+// ---------------------------------------------------------------------------------------
+
+/** Build a fetch stub from a url→{status, body, headers} table. */
+type StubHit = { status: number; body: string; headers?: Record<string, string> } | null;
+const stubFetch = (routes: (url: string, init: any) => StubHit | Promise<StubHit>) =>
+  (async (url: any, init: any = {}) => {
+    const hit = await routes(String(url), init);
+    if (!hit) return new Response("nope", { status: 404 });
+    return new Response(hit.body, { status: hit.status, headers: hit.headers ?? { "content-type": "application/json" } });
+  }) as unknown as typeof fetch;
+
+const catalogFor = (origin: string, publisherDomain = origin, mcpOrigin = origin, bundleOrigin = origin) =>
+  JSON.stringify({
+    $schema: "x", name: "Test Site", description: "d",
+    publisher: { name: "Test Publisher", domain: publisherDomain },
+    updatedAt: new Date().toISOString(), bundleHash: "abc123",
+    capabilities: [
+      { kind: "knowledge-bundle", format: "okf", endpoint: `${bundleOrigin}/api/bundle`, contentTypes: ["text/markdown"] },
+      { kind: "mcp-server", transport: "streamable-http", endpoint: `${mcpOrigin}/api/mcp`, tools: ["search_concepts"] }
+    ]
+  });
+
+console.log("\n— ARD: input normalization:");
+{
+  check("bare host becomes https", normalizeDomain("example.com").origin === "https://example.com");
+  check("explicit scheme is honoured", normalizeDomain("http://example.com").origin === "http://example.com");
+  check("path and query are stripped", normalizeDomain("https://example.com/c/x?y=1").origin === "https://example.com");
+  check("port survives", normalizeDomain("example.com:8443").origin === "https://example.com:8443");
+  const local = normalizeDomain("localhost:3000");
+  check("loopback tries http first", local.origin === "http://localhost:3000");
+  check("a public host is never downgraded to http", normalizeDomain("example.com").candidates.every((c) => c.startsWith("https://")));
+  let bad = "";
+  try { normalizeDomain("ftp://x"); } catch (e: any) { bad = e.code; }
+  check("non-http scheme is refused", bad === "ARD_BAD_INPUT", bad);
+  check("private ranges are recognised", isPrivateHost("169.254.169.254") && isPrivateHost("10.0.0.1") && !isPrivateHost("example.com"));
+}
+
+console.log("\n— ARD: catalog validation (the same code build.ts runs):");
+{
+  const ok = validateAiCatalog(JSON.parse(catalogFor("https://a.example")));
+  check("a well-formed catalog passes", ok.errors.length === 0, ok.errors.join("; "));
+
+  // Deliberately a WARNING, not an error: whether a publisher-less catalog is acceptable is
+  // a trust decision, and the trust layer owns it. Failing here made "missing-publisher"
+  // unreachable and reported the wrong error code.
+  const missingDomain = validateAiCatalog({ name: "n", publisher: { name: "p" }, capabilities: [] });
+  check("publisher.domain missing is a warning, not a schema error",
+    missingDomain.errors.length === 0 && missingDomain.warnings.some((w) => w.includes("publisher.domain")));
+  check("capabilities must be an array", validateAiCatalog({ name: "n", publisher: { name: "p", domain: "d" } }).errors.some((e) => e.includes("capabilities")));
+  check("mcp-server without endpoint is an error", validateAiCatalog({ name: "n", publisher: { name: "p", domain: "d" }, capabilities: [{ kind: "mcp-server" }] }).errors.some((e) => e.includes("endpoint")));
+  check("a relative endpoint is an error", validateAiCatalog({ name: "n", publisher: { name: "p", domain: "d" }, capabilities: [{ kind: "mcp-server", endpoint: "/api/mcp" }] }).errors.some((e) => e.includes("absolute")));
+  const unknown = validateAiCatalog({ name: "n", publisher: { name: "p", domain: "d" }, capabilities: [{ kind: "future-thing", endpoint: "https://x.example/y" }] });
+  check("an unknown capability kind warns but does not fail", unknown.errors.length === 0 && unknown.warnings.some((w) => w.includes("unknown kind")));
+
+  // The round trip that makes the "validated during build" claim mean something: every
+  // bundle's real catalog is checked by the very validator a stranger's client uses.
+  const cfgMod: any = await import("../triplane.config.js");
+  const cfg = cfgMod.default?.default ?? cfgMod.default ?? cfgMod;
+  for (const dir of readdirSync("bundles")) {
+    const { graph: g } = compileBundle(join("bundles", dir));
+    const res = validateAiCatalog(buildAiCatalog(cfg, g, buildTools()));
+    check(`bundles/${dir} produces a valid catalog`, res.errors.length === 0, res.errors.join("; "));
+  }
+}
+
+console.log("\n— ARD: discovery and the trust verdict:");
+{
+  const origin = "https://good.example";
+  const found = await discover(origin, {
+    fetchImpl: stubFetch((url) => (url === `${origin}/.well-known/ai-catalog.json` ? { status: 200, body: catalogFor(origin) } : null))
+  });
+  check("well-known discovery works", found.via === "well-known" && found.origin === origin);
+  check("same host over https is verified-origin", found.trust.level === "verified-origin", found.trust.level);
+  check("the verdict always says what it does NOT prove", found.trust.doesNotProve.length >= 3);
+  check("endpoint on the serving host passes the second check", found.trust.endpointCheck === "same-host");
+  check("both capabilities are surfaced, not just mcp", !!found.capabilities.mcp && !!found.capabilities.bundle);
+
+  // llms.txt stops being decorative: it is a real discovery path with a test behind it.
+  const llmsOrigin = "https://pointer.example";
+  const viaLlms = await discover(llmsOrigin, {
+    fetchImpl: stubFetch((url) => {
+      // No catalog at the well-known path — llms.txt names one somewhere else, which is
+      // the case this fallback exists for.
+      if (url === `${llmsOrigin}/.well-known/ai-catalog.json`) return { status: 404, body: "no" };
+      if (url === `${llmsOrigin}/llms.txt`) return { status: 200, body: `# Site\n## Agent access\n- Catalog: ${llmsOrigin}/ard/catalog.json\n`, headers: { "content-type": "text/plain" } };
+      if (url === `${llmsOrigin}/ard/catalog.json`) return { status: 200, body: catalogFor(llmsOrigin) };
+      return null;
+    })
+  });
+  check("llms.txt is a working fallback path", viaLlms.via === "llms.txt");
+  check("parseLlmsTxt finds the catalog link", parseLlmsTxt("- Catalog: https://x.example/.well-known/ai-catalog.json").catalogUrl === "https://x.example/.well-known/ai-catalog.json");
+
+  // A catalog claiming to be someone else is the attack the publisher check exists for.
+  const liar = "https://liar.example";
+  let code = "";
+  try {
+    await discover(liar, { fetchImpl: stubFetch((url) => (url.startsWith(liar) && url.includes("ai-catalog") ? { status: 200, body: catalogFor(liar, "https://bank.example") } : null)) });
+  } catch (e: any) { code = e.code; }
+  check("a foreign publisher domain is REFUSED", code === "ARD_PUBLISHER_UNVERIFIED", code);
+
+  // ...and refusing is waivable, explicitly, per call.
+  const waived = await discover(liar, {
+    allow: ["unverified-publisher"],
+    fetchImpl: stubFetch((url) => (url.startsWith(liar) && url.includes("ai-catalog") ? { status: 200, body: catalogFor(liar, "https://bank.example") } : null))
+  });
+  check("an explicit waiver unblocks it and the verdict still says foreign-origin", waived.trust.level === "foreign-origin");
+
+  // A catalog pointing at somebody else's server is the other half of the same attack.
+  const offsite = "https://offsite.example";
+  let code2 = "";
+  try {
+    await discover(offsite, { fetchImpl: stubFetch((url) => (url.startsWith(offsite) && url.includes("ai-catalog") ? { status: 200, body: catalogFor(offsite, offsite, "https://elsewhere.example") } : null)) });
+  } catch (e: any) { code2 = e.code; }
+  check("an offsite endpoint is REFUSED", code2 === "ARD_ENDPOINT_OFFSITE", code2);
+
+  let code3 = "";
+  try {
+    await discover("https://nothing.example", { fetchImpl: stubFetch(() => ({ status: 404, body: "no" })) });
+  } catch (e: any) { code3 = e.code; }
+  check("a site with no catalog reports ARD_NOT_FOUND", code3 === "ARD_NOT_FOUND", code3);
+
+  let code4 = "";
+  try {
+    await discover("https://spa.example", { fetchImpl: stubFetch((url) => (url.includes("ai-catalog") ? { status: 200, body: "<!doctype html><html>", headers: { "content-type": "text/html" } } : null)) });
+  } catch (e: any) { code4 = e.code; }
+  check("an SPA answering 200 with HTML reports ARD_NOT_JSON", code4 === "ARD_NOT_JSON", code4);
+}
+
+console.log("\n— ARD: MCP-over-HTTP client framing:");
+{
+  check("a plain JSON response parses", extractJsonRpc('{"jsonrpc":"2.0","id":1,"result":{"ok":true}}', "application/json").result.ok === true);
+  // A compliant server may answer a POST with an SSE frame; a JSON-only client breaks there.
+  check(
+    "a text/event-stream response parses",
+    extractJsonRpc('event: message\ndata: {"jsonrpc":"2.0","id":1,"result":{"ok":true}}\n\n', "text/event-stream").result.ok === true
+  );
+  check("an empty body is null, not a crash", extractJsonRpc("", "application/json") === null);
+}
+
+console.log("\n— ARD: the proxy cannot route around the publisher's exposure decision:");
+{
+  // The stub IS the real handler, so this asserts against production behaviour rather than
+  // a mock of it. Two independent gates have to hold: the server's, and the proxy's.
+  const origin = "https://real.example";
+  const handler = createMcpHandler(buildTools(), graph, "smoke");
+  const fetchImpl = stubFetch((url, init) => {
+    if (url.includes("ai-catalog")) return { status: 200, body: catalogFor(origin) };
+    if (url === `${origin}/api/mcp`) {
+      return handler(JSON.parse(String(init.body))).then((res: any) => ({
+        status: res === null ? 202 : 200,
+        body: res === null ? "" : JSON.stringify(res)
+      }));
+    }
+    return null;
+  });
+
+  const registry = new SiteRegistry();
+  const ctxTools = { registry, fetchImpl };
+  const listed = await runTool("ard_tools", { domain: origin }, ctxTools);
+  const listedText = listed.content[0].text;
+  check("proxy lists exactly the four global read tools", ["search_concepts", "get_concept", "get_join_path", "explain_metric"].every((n) => listedText.includes(n)));
+  check("no write tool is listed", !listedText.includes("propose_concept"));
+  check("no ui tool is listed", !listedText.includes("highlight_subgraph"));
+
+  for (const blocked of ["propose_concept", "highlight_subgraph", "compare_metrics"]) {
+    const res = await runTool("ard_call", { domain: origin, tool: blocked, arguments: {} }, ctxTools);
+    check(`proxy refuses ${blocked}`, res.isError === true && res.content[0].text.startsWith("ARD_TOOL_NOT_OFFERED"));
+  }
+
+  const good = await runTool("ard_call", { domain: origin, tool: "search_concepts", arguments: { query: "a" } }, ctxTools);
+  check("an offered tool round-trips through the proxy", good.isError !== true && good.content[0].text.includes("— via "));
+  check("results carry a provenance line naming the bundle", good.content[0].text.includes("abc123"));
+
+  const sites = await runTool("ard_sites", {}, ctxTools);
+  check("ard_sites reports the session's discoveries", sites.content[0].text.includes(origin));
+}
+
+console.log("\n— ARD: stdio framing and the server:");
+{
+  check("encodeLine ends in exactly one newline", encodeLine({ a: 1 }) === '{"a":1}\n');
+  const d = new LineDecoder();
+  check("a partial line is buffered", d.push('{"a":').length === 0);
+  check("the completed line then decodes", d.push('1}\n').length === 1);
+  check("\\r\\n is tolerated and blanks ignored", new LineDecoder().push('{"a":1}\r\n\n{"b":2}\n').length === 2);
+
+  const ctxS = { registry: new SiteRegistry() };
+  const init: any = handleRpc({ jsonrpc: "2.0", id: 1, method: "initialize", params: { protocolVersion: "2025-06-18" } }, ctxS);
+  check("initialize echoes a supported protocol version", init.result.protocolVersion === "2025-06-18");
+  check("initialize names the server", init.result.serverInfo.name === "triplane-ard");
+  check("initialize ships instructions for the host", typeof init.result.instructions === "string" && init.result.instructions.length > 40);
+  check("a notification gets no reply", handleRpc({ jsonrpc: "2.0", method: "notifications/initialized" }, ctxS) === null);
+  const list: any = handleRpc({ jsonrpc: "2.0", id: 2, method: "tools/list" }, ctxS);
+  check("tools/list returns the five ard_ tools", list.result.tools.length === 5 && list.result.tools.every((t: any) => t.name.startsWith("ard_")));
+  check("every tool declares an object inputSchema", TOOL_DEFS.every((t: any) => t.inputSchema?.type === "object"));
+  check("no ard_ tool accepts an endpoint argument", !JSON.stringify(TOOL_DEFS).includes('"endpoint"'));
+  const unknownMethod: any = handleRpc({ jsonrpc: "2.0", id: 3, method: "nope" }, ctxS);
+  check("an unknown method is -32601", unknownMethod.error.code === -32601);
+  const unknownTool: any = await handleRpc({ jsonrpc: "2.0", id: 4, method: "tools/call", params: { name: "ard_nope" } }, ctxS);
+  check("an unknown ard_ tool is -32602", unknownTool.error.code === -32602);
+}
+
+console.log("\n— ARD: SSRF and offsite endpoints (regression: the guard was once inverted):");
+{
+  // THE regression test. The guard must follow what the USER asked for. Deriving it from the
+  // endpoint being fetched let a catalog naming a private address switch its own guard off,
+  // and ard_read would then fetch it.
+  const evil = "https://evil.example";
+  const metadata = "http://169.254.169.254";
+  let code = "";
+  try {
+    await discover(evil, {
+      fetchImpl: stubFetch((url) =>
+        url.includes("ai-catalog") ? { status: 200, body: catalogFor(evil, evil, evil, metadata) } : null)
+    });
+  } catch (e: any) { code = e.code; }
+  check("a public catalog advertising a private-address endpoint is REFUSED", code === "ARD_ENDPOINT_OFFSITE", code);
+
+  // Even waived past the offsite check, the fetch itself must still refuse the private target:
+  // two independent guards, because the first one is the one that was wrong before.
+  const registry = new SiteRegistry();
+  const fetchImpl = stubFetch((url) =>
+    url.includes("ai-catalog") ? { status: 200, body: catalogFor(evil, evil, evil, metadata) }
+      : url.startsWith(metadata) ? { status: 200, body: "SECRET" } : null);
+  const read = await runTool("ard_read", { domain: evil, allow: ["offsite-endpoint"] }, { registry, fetchImpl });
+  check("even waived, ard_read still refuses a private address",
+    read.isError === true && read.content[0].text.startsWith("ARD_BLOCKED_TARGET"), read.content[0].text.slice(0, 60));
+  check("the private body never reaches the caller", !read.content[0].text.includes("SECRET"));
+
+  // The offsite check must cover EVERY capability, not just the mcp one it happens to want.
+  const site = "https://site.example";
+  let code2 = "";
+  try {
+    await discover(site, {
+      fetchImpl: stubFetch((url) =>
+        url.includes("ai-catalog") ? { status: 200, body: catalogFor(site, site, site, "https://other.example") } : null)
+    });
+  } catch (e: any) { code2 = e.code; }
+  check("a same-host mcp endpoint does not excuse an offsite bundle endpoint", code2 === "ARD_ENDPOINT_OFFSITE", code2);
+}
+
+console.log("\n— ARD: waivers are real (they were advertised before they worked):");
+{
+  const http = "http://plain.example";
+  let code = "";
+  try {
+    await discover(http, { fetchImpl: stubFetch((url) => (url.includes("ai-catalog") ? { status: 200, body: catalogFor(http) } : null)) });
+  } catch (e: any) { code = e.code; }
+  check("plain http on a public host is REFUSED", code === "ARD_PUBLISHER_UNVERIFIED", code);
+
+  const waived = await discover(http, {
+    allow: ["insecure-transport"],
+    fetchImpl: stubFetch((url) => (url.includes("ai-catalog") ? { status: 200, body: catalogFor(http) } : null))
+  });
+  check("insecure-transport actually waives it", waived.trust.level === "unverified-local");
+  check("the waiver is echoed back in the result", waived.waived.includes("insecure-transport"));
+  check("and rendered, so a reader cannot miss it", renderDiscovery(waived).includes("CHECKS WAIVED"));
+
+  let bad = "";
+  try { await discover("https://x.example", { allow: ["banana" as any] }); } catch (e: any) { bad = e.code; }
+  check("an unknown waiver is refused rather than ignored", bad === "ARD_BAD_INPUT", bad);
+
+  // localhost over http is the local-instance case and stays allowed, labelled.
+  const local = "http://localhost:3000";
+  const loopback = await discover("localhost:3000", {
+    fetchImpl: stubFetch((url) => (url.startsWith(local) && url.includes("ai-catalog") ? { status: 200, body: catalogFor(local) } : null))
+  });
+  check("loopback over http is still allowed", loopback.trust.level === "unverified-local");
+  check("and its private target is permitted because the user asked for it", loopback.allowPrivate === true);
+}
+
+console.log("\n— ARD: redirects are walked by hand, guarded and capped:");
+{
+  const start = "https://a.example";
+  const end = "https://b.example";
+  const hops = stubFetch((url) => {
+    if (url === `${start}/.well-known/ai-catalog.json`) return { status: 302, body: "", headers: { location: `${end}/catalog.json` } };
+    if (url === `${end}/catalog.json`) return { status: 200, body: catalogFor(end) };
+    return null;
+  });
+  const moved = await discover(start, { fetchImpl: hops });
+  check("a redirect is followed", moved.origin === end);
+  check("trust is judged against the host that ACTUALLY served it", moved.trust.servingHost === "b.example");
+  check("the hop is reported, not hidden", moved.redirects.length > 0);
+
+  // A redirect that lands somewhere guardTarget refuses must not be followed.
+  let blocked = "";
+  try {
+    await fetchText(`${start}/x`, {
+      fetchImpl: stubFetch((url) => (url === `${start}/x` ? { status: 302, body: "", headers: { location: "http://169.254.169.254/" } } : { status: 200, body: "SECRET" }))
+    });
+  } catch (e: any) { blocked = e.code; }
+  check("a redirect into a private address is blocked mid-chain", blocked === "ARD_BLOCKED_TARGET", blocked);
+
+  let looped = "";
+  try {
+    await fetchText(`${start}/loop`, {
+      fetchImpl: stubFetch((url) => ({ status: 302, body: "", headers: { location: `${start}/loop?${url.length}` } }))
+    });
+  } catch (e: any) { looped = e.code; }
+  check("an endless redirect chain hits the cap", looped === "ARD_TOO_MANY_REDIRECTS", looped);
+}
+
+console.log("\n— ARD: transports we cannot speak are refused, not POSTed at:");
+{
+  const o = "https://stdio.example";
+  const body = JSON.stringify({
+    name: "S", publisher: { name: "P", domain: o }, capabilities: [{ kind: "mcp-server", transport: "stdio", endpoint: `${o}/api/mcp` }]
+  });
+  let code = "";
+  try { await discover(o, { fetchImpl: stubFetch((url) => (url.includes("ai-catalog") ? { status: 200, body } : null)) }); }
+  catch (e: any) { code = e.code; }
+  check("a transport this client cannot speak is refused", code === "ARD_TRANSPORT_UNSUPPORTED", code);
+}
+
+console.log("\n— ARD: the remaining tool handlers and rendering:");
+{
+  const origin = "https://render.example";
+  const files = JSON.stringify({ format: "okf", files: ["a.md", "b/c.md"] });
+  const fetchImpl = stubFetch((url) => {
+    if (url.includes("ai-catalog")) return { status: 200, body: catalogFor(origin) };
+    if (url === `${origin}/api/bundle`) return { status: 200, body: files };
+    if (url.startsWith(`${origin}/api/bundle?path=`)) return { status: 200, body: "# doc", headers: { "content-type": "text/markdown" } };
+    return null;
+  });
+  const registry = new SiteRegistry();
+  const ctxR = { registry, fetchImpl };
+
+  const disc = await runTool("ard_discover", { domain: origin }, ctxR);
+  check("ard_discover renders the publisher and the trust verdict", disc.content[0].text.includes("TRUST: verified-origin"));
+  check("ard_discover always states what the check does NOT prove", disc.content[0].text.includes("does NOT prove"));
+
+  const listing = await runTool("ard_read", { domain: origin }, ctxR);
+  check("ard_read with no path lists the bundle", listing.content[0].text.includes("b/c.md"));
+  const doc = await runTool("ard_read", { domain: origin, path: "a.md" }, ctxR);
+  check("ard_read with a path returns the document", doc.content[0].text.startsWith("# doc"));
+  check("ard_read carries provenance", doc.content[0].text.includes("— via "));
+  const escape = await runTool("ard_read", { domain: origin, path: "../secrets.md" }, ctxR);
+  check("ard_read refuses a path that escapes the bundle", escape.isError === true);
+
+  const empty = await runTool("ard_sites", {}, { registry: new SiteRegistry(), fetchImpl });
+  check("ard_sites says so when nothing is discovered", empty.content[0].text.includes("No sites discovered"));
+}
+
+console.log("\n— ARD: registry behaviour:");
+{
+  const reg = new SiteRegistry();
+  const origin = "https://reg.example";
+  const mk = (hash: string, endpoint = `${origin}/api/mcp`): any => ({
+    origin, requestedOrigin: origin, catalogUrl: "", via: "well-known", redirects: [],
+    catalog: { name: "n", publisher: { name: "p", domain: origin }, capabilities: [], bundleHash: hash },
+    validation: { warnings: [] }, trust: {}, capabilities: { mcp: { kind: "mcp-server", endpoint }, other: [] },
+    allowPrivate: false, waived: []
+  });
+
+  const first = reg.put(mk("h1"));
+  reg.cacheTools(first, [{ name: "t1" }]);
+  check("a same-hash re-discovery keeps the cached tool list", reg.put(mk("h1")).tools?.length === 1);
+  check("a changed bundleHash drops it", reg.put(mk("h2")).tools === undefined);
+
+  check("find matches a bare host", !!reg.find("reg.example"));
+  check("find matches a full origin", !!reg.find(origin));
+  check("find matches a URL with a path", !!reg.find(`${origin}/c/thing`));
+  check("find does not match a different host", !reg.find("other.example"));
+
+  // Keyed by endpoint: an origin-keyed cache kept talking to a moved endpoint.
+  const recA = reg.put(mk("h3", `${origin}/api/mcp`));
+  const clientA = reg.client(recA, {});
+  const recB = reg.put(mk("h3", `${origin}/api/mcp-v2`));
+  check("a moved endpoint gets a new client", reg.client(recB, {}) !== clientA);
+}
+
+console.log("\n— ARD: MCP client session handling and error shapes:");
+{
+  const ep = "https://sess.example/api/mcp";
+  const seen: (string | null)[] = [];
+  const client = new McpHttpClient(ep, {
+    fetchImpl: stubFetch((url, init) => {
+      seen.push((init.headers ?? {})["mcp-session-id"] ?? null);
+      const req = JSON.parse(String(init.body));
+      if (req.method === "initialize") {
+        return { status: 200, body: JSON.stringify({ jsonrpc: "2.0", id: req.id, result: { protocolVersion: "2025-06-18" } }), headers: { "content-type": "application/json", "mcp-session-id": "sess-1" } };
+      }
+      if (req.method === "tools/list") {
+        return { status: 200, body: JSON.stringify({ jsonrpc: "2.0", id: req.id, result: { tools: [{ name: "x" }] } }) };
+      }
+      return { status: 200, body: JSON.stringify({ jsonrpc: "2.0", id: req.id, error: { code: -32602, message: "Unknown tool: nope" } }) };
+    })
+  });
+  await client.initialize();
+  await client.listTools();
+  check("a session id issued by the server is captured and replayed", seen.some((h) => h === "sess-1"));
+
+  let code = "";
+  try { await client.callTool("nope", {}); } catch (e: any) { code = e.code; }
+  // A JSON-RPC error arrives as HTTP 200; reading .result blindly is the classic crash.
+  check("a JSON-RPC error becomes ARD_TOOL_ERROR, not a crash", code === "ARD_TOOL_ERROR", code);
+
+  let http = "";
+  try {
+    await new McpHttpClient(ep, { fetchImpl: stubFetch(() => ({ status: 503, body: "down" })) }).initialize();
+  } catch (e: any) { http = e.code; }
+  check("a non-2xx becomes ARD_RPC_FAILED", http === "ARD_RPC_FAILED", http);
+}
+
+console.log("\n— ARD: CLI argument parsing:");
+{
+  const a = parseArgv(["discover", "example.com"]);
+  check("plain positionals parse", a.cmd === "discover" && a.domain === "example.com");
+  // The bug: a flag before the domain used to be taken AS the domain.
+  const b = parseArgv(["discover", "--allow", "offsite-endpoint", "example.com"]);
+  check("a flag before the domain is not swallowed", b.domain === "example.com" && b.allow[0] === "offsite-endpoint");
+  const c = parseArgv(["call", "example.com", "search", "{}"]);
+  check("trailing positionals survive", c.args.length === 2);
+  let bad = "";
+  try { parseArgv(["discover", "x", "--allow", "banana"]); } catch (e: any) { bad = e.code; }
+  check("the CLI refuses an unknown waiver too", bad === "ARD_BAD_INPUT", bad);
+}
+
+console.log("\n— ARD: the launch contract (this is what silently rots):");
+{
+  const root = "plugins/triplane-ard";
+  const pkg = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
+  check("the ARD package has zero runtime dependencies", Object.keys(pkg.dependencies ?? {}).length === 0,
+    "standalone launch depends on this: node cannot resolve bare specifiers without node_modules");
+  for (const manifest of [".claude-plugin/plugin.json", ".codex-plugin/plugin.json"]) {
+    const m = JSON.parse(readFileSync(join(root, manifest), "utf8"));
+    const args: string[] = m.mcpServers?.ard?.args ?? [];
+    const rel = args.find((a) => a.includes("ard-mcp.mjs"))?.replace(/^\$\{CLAUDE_PLUGIN_ROOT\}\//, "").replace(/^\.\//, "");
+    check(`${manifest} points at a launcher that exists`, !!rel && existsSync(join(root, rel)), rel ?? "no arg");
+  }
+
+  // A host launches this from ITS cwd, not ours. The first version resolved `tsx` as a bare
+  // specifier, which worked from the repo and failed everywhere else — and a failed MCP
+  // server reports only "Connection closed", so nothing upstream says why.
+  const { spawnSync } = await import("node:child_process");
+  const elsewhere = mkdtempSync(join(tmpdir(), "triplane-ard-cwd-"));
+  const proc = spawnSync(process.execPath, [join(process.cwd(), root, "bin/ard-mcp.mjs")], {
+    cwd: elsewhere,
+    input: '{"jsonrpc":"2.0","id":1,"method":"tools/list"}\n',
+    encoding: "utf8",
+    timeout: 30_000
+  });
+  let names: string[] = [];
+  try {
+    names = JSON.parse((proc.stdout ?? "").split("\n").find((l) => l.trim())!).result.tools.map((t: any) => t.name);
+  } catch { /* leave empty — the check below reports it */ }
+  check("the launcher works from an unrelated cwd", names.length === 5,
+    (proc.stderr ?? "").split("\n").slice(0, 2).join(" ") || "no output");
+  rmSync(elsewhere, { recursive: true, force: true });
+}
+
 console.log(failures ? `\n✗ ${failures} smoke check(s) failed` : "\n✓ all smoke checks passed");
-process.exit(failures ? 1 : 0);
+// Set the code and let node exit on its own. process.exit() abandons whatever stdout has
+// not flushed, which is invisible on a terminal (synchronous) and silently truncates the
+// log the moment output is redirected to a file or a CI pipe.
+process.exitCode = failures ? 1 : 0;

@@ -1,0 +1,12 @@
+{
+  "name": "triplane",
+  "owner": { "name": "Triplane" },
+  "plugins": [
+    {
+      "name": "triplane-ard",
+      "source": "./plugins/triplane-ard",
+      "description": "Agentic Resource Discovery: find, check and use any ARD-enabled site from a bare domain.",
+      "category": "developer-tools"
+    }
+  ]
+}

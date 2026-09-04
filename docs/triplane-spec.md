@@ -56,9 +56,9 @@
 
 | Feature | Description |
 |---|---|
-| ARD manifest | `/.well-known/ai-catalog.json` generated from config: publisher metadata + two capabilities (raw OKF bundle endpoint, hosted MCP server). Shape validated against the ard-spec during build |
+| ARD manifest | `/.well-known/ai-catalog.json` generated from config: publisher metadata + two capabilities (raw OKF bundle endpoint, hosted MCP server). Shape validated during build by `validateAiCatalog` in `@triplane/ard` — the same function a stranger's discovery client runs against it |
 | `llms.txt` | Pointer file → manifest + bundle |
-| Hosted MCP server | Same `tools.ts` read-tools mounted at `/api/mcp` (Streamable HTTP, official MCP SDK) |
+| Hosted MCP server | Same `tools.ts` read-tools mounted at `/api/mcp` (a hand-rolled Streamable HTTP subset: POST only, no session id, `GET` → 405. All three are permitted by the spec) |
 | Raw bundle endpoint | `/api/bundle` serves the OKF directory (tarball + per-file) for agents that want the markdown itself |
 | Reference ARD agent | `packages/cli`: ~100-line headless client doing the full loop — fetch catalog → pick capability → connect → answer the WAU question citing the same concept IDs the sidebar cites |
 
